@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: account-service
+
+
+
+  datasource:
+    username: markethub
+    password: markethub
+    url: jdbc:postgresql://localhost:5432/postgres
