@@ -6,6 +6,9 @@ services:
       POSTGRES_DB: markethub
       POSTGRES_USER: markethub
       POSTGRES_PASSWORD: markethub
+      ACCOUNT_DB: account
+      ACCOUNT_DB_USER: markethub
+      ACCOUNT_DB_PASSWORD: markethub
       KEYCLOAK_DB: keycloak
       KEYCLOAK_DB_USER: keycloak
       KEYCLOAK_DB_PASSWORD: keycloak

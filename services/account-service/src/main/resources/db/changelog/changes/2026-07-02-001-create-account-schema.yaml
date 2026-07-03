@@ -1,0 +1,159 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2026-07-02-001-create-customers
+      author: tuiop
+      labels: account-service
+      changes:
+        - createTable:
+            tableName: customers
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_customers
+              - column:
+                  name: keycloak_user_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: first_name
+                  type: varchar(255)
+              - column:
+                  name: last_name
+                  type: varchar(255)
+              - column:
+                  name: birth_date
+                  type: date
+              - column:
+                  name: email
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: country
+                  type: varchar(255)
+              - column:
+                  name: city
+                  type: varchar(255)
+              - column:
+                  name: street
+                  type: varchar(255)
+              - column:
+                  name: postal_code
+                  type: varchar(255)
+              - column:
+                  name: apartment
+                  type: varchar(255)
+              - column:
+                  name: enabled
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: customers
+            columnNames: keycloak_user_id
+            constraintName: uq_customers_keycloak_user_id
+        - addUniqueConstraint:
+            tableName: customers
+            columnNames: email
+            constraintName: uq_customers_email
+
+  - changeSet:
+      id: 2026-07-02-002-create-merchants
+      author: tuiop
+      labels: account-service
+      changes:
+        - createTable:
+            tableName: merchants
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_merchants
+              - column:
+                  name: keycloak_user_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: shop_name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(2000)
+              - column:
+                  name: email
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(32)
+                  defaultValue: PENDING
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: verified_at
+                  type: timestamp with time zone
+        - addUniqueConstraint:
+            tableName: merchants
+            columnNames: keycloak_user_id
+            constraintName: uq_merchants_keycloak_user_id
+        - addUniqueConstraint:
+            tableName: merchants
+            columnNames: email
+            constraintName: uq_merchants_email
+        - createIndex:
+            tableName: merchants
+            indexName: ux_merchants_shop_name_lower
+            unique: true
+            columns:
+              - column:
+                  name: lower(shop_name)
+                  computed: true
+        - createIndex:
+            tableName: merchants
+            indexName: idx_merchants_status
+            columns:
+              - column:
+                  name: status
+        - sql:
+            sql: >-
+              ALTER TABLE merchants
+              ADD CONSTRAINT chk_merchants_status
+              CHECK (status IN ('PENDING', 'VERIFIED', 'REJECTED', 'SUSPENDED'))
+            rollback: ALTER TABLE merchants DROP CONSTRAINT chk_merchants_status

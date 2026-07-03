@@ -4,7 +4,31 @@ spring:
 
 
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/markethub}
+
   datasource:
     username: markethub
     password: markethub
-    url: jdbc:postgresql://localhost:5432/postgres
+    url: jdbc:postgresql://localhost:5432/account
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  liquibase:
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+
+keycloak:
+  admin:
+    server-url: ${KEYCLOAK_SERVER_URL:http://localhost:8080}
+    realm: markethub
+    client-id: account-service-admin
+    client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+
+server:
+  port: 8081
