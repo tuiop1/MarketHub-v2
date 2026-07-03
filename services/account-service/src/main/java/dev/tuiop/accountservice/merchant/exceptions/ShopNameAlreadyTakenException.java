@@ -1,5 +1,6 @@
 package dev.tuiop.accountservice.merchant.exceptions;
 
+import dev.tuiop.accountservice.common.exceptions.BusinessException;
 
 public class ShopNameAlreadyTakenException extends BusinessException {
     public ShopNameAlreadyTakenException(String shopName) {

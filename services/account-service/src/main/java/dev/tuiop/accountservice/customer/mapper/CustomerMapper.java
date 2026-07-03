@@ -14,7 +14,7 @@ public interface CustomerMapper {
     @Mapping(target = "firstName", source = "request.firstName")
     @Mapping(target = "lastName", source = "request.lastName")
     @Mapping(target = "birthDate", source = "request.birthDate")
-    @Mapping(target = "email", source = "request.email")
+    @Mapping(target = "email", expression = "java(request.email().trim())")
     @Mapping(target = "adress", source = "request.address")
     @Mapping(target = "enabled", ignore = true)
     @Mapping(target = "createdAt", ignore = true)

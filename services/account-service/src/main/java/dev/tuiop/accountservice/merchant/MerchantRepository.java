@@ -15,6 +15,8 @@ public interface MerchantRepository extends JpaRepository<Merchant, UUID> {
 
     boolean existsByShopNameIgnoreCase(String shopName);
 
+    boolean existsByEmailIgnoreCase(String email);
+
     boolean existsByKeycloakUserId(String keycloakUserId);
 
     Optional<Merchant> findByKeycloakUserId(String keycloakUserId);

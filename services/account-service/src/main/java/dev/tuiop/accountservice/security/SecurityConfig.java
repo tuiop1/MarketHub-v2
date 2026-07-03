@@ -1,5 +1,6 @@
 package dev.tuiop.accountservice.security;
 
+import dev.tuiop.accountservice.security.keycloak.KeycloakRealmRoleConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;

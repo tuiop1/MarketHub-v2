@@ -14,7 +14,7 @@ public class MerchantMapper {
                 .keycloakUserId(keycloakUserId)
                 .shopName(request.shopName().trim())
                 .description(request.description())
-                .email(email)
+                .email(email.trim())
                 .build();
     }
 
@@ -23,7 +23,7 @@ public class MerchantMapper {
                 .keycloakUserId(keycloakUserId)
                 .shopName(request.shopName().trim())
                 .description(request.description())
-                .email(request.email())
+                .email(request.email().trim())
                 .build();
     }
 

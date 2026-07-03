@@ -1,4 +1,4 @@
-package dev.tuiop.accountservice.security;
+package dev.tuiop.accountservice.security.keycloak;
 
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.core.GrantedAuthority;
@@ -15,7 +15,7 @@ public class KeycloakRealmRoleConverter
 
     @Override
     public Collection<GrantedAuthority> convert(Jwt jwt) {
-        Map<String, Object> realmAccess = jwt.getClaim("real_access");
+        Map<String, Object> realmAccess = jwt.getClaim("realm_access");
         if(realmAccess == null) {
             return List.of();
         }

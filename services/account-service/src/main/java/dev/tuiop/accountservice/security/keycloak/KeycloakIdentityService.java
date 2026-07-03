@@ -2,6 +2,7 @@ package dev.tuiop.accountservice.security.keycloak;
 
 
 import dev.tuiop.accountservice.security.keycloak.config.KeycloakAdminProperties;
+import dev.tuiop.accountservice.common.exceptions.EmailAlreadyTakenException;
 import jakarta.ws.rs.core.Response;
 import org.keycloak.admin.client.CreatedResponseUtil;
 import org.keycloak.admin.client.Keycloak;
@@ -64,6 +65,10 @@ public class KeycloakIdentityService {
 
         try(Response response = realm.users().create(user)) {
             if (response.getStatus() != Response.Status.CREATED.getStatusCode()) {
+                if (response.getStatus() == Response.Status.CONFLICT.getStatusCode()) {
+                    throw new EmailAlreadyTakenException(email);
+                }
+
                 throw new IllegalStateException(
                         "Keycloak user creation failed with status " + response.getStatus()
                 );
@@ -112,7 +117,9 @@ public class KeycloakIdentityService {
     }
 
 
-    public void addRealmRole(String userId, String roleName) {
+    public void addRealmRole(String userId, RealmRole realmRole) {
+
+        String roleName = realmRole.name();
         RealmResource realm = keycloak.realm(realmName);
 
         RoleRepresentation role = realm.roles()
@@ -126,7 +133,8 @@ public class KeycloakIdentityService {
                 .add(List.of(role));
     }
 
-    public void removeRealmRole(String userId, String roleName) {
+    public void removeRealmRole(String userId, RealmRole realmRole) {
+        String roleName = realmRole.name();
         RealmResource realm = keycloak.realm(realmName);
 
         RoleRepresentation role = realm.roles()
