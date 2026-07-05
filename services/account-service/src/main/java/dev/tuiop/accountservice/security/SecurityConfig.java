@@ -3,51 +3,44 @@ package dev.tuiop.accountservice.security;
 import dev.tuiop.accountservice.security.keycloak.KeycloakRealmRoleConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
-import org.springframework.security.web.util.matcher.RequestMatchers;
 
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
-    @Order(1)
-    public SecurityFilterChain authSecurityFilterChain(HttpSecurity http) throws Exception {
-        PathPatternRequestMatcher customerRegistration =
-                PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/api/v1/auth/customers/register");
-        PathPatternRequestMatcher merchantRegistration =
-                PathPatternRequestMatcher.pathPattern(HttpMethod.POST, "/api/v1/auth/merchants/register");
-
-        return http
-                .securityMatcher(RequestMatchers.anyOf(customerRegistration, merchantRegistration))
-                .csrf(csrf -> csrf.disable())
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(customerRegistration, merchantRegistration).permitAll()
-                )
-                .build();
-    }
-
-    @Bean
-    @Order(2)
-    public SecurityFilterChain apiSecurityFilterChain(
+    public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            JwtAuthenticationConverter jwtAuthenticationConverter
+            JwtAuthenticationConverter jwtAuthenticationConverter,
+            ApiAuthenticationEntryPoint apiAuthenticationEntryPoint,
+            ApiAccessDeniedHandler apiAccessDeniedHandler
     ) {
 
         return  http
                 .csrf(csrf -> csrf.disable())
+                .exceptionHandling(exceptionHandling -> exceptionHandling
+                        .authenticationEntryPoint(apiAuthenticationEntryPoint)
+                        .accessDeniedHandler(apiAccessDeniedHandler)
+                )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/customers/**")
-                        .hasRole("CUSTOMER")
 
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/customers/register")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/merchants/register")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/v1/customers/")
+                        .hasRole("CUSTOMER")
+                        .requestMatchers("/api/v1/customers/**")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/v1/merchants/me")
+                        .hasAnyRole("MERCHANT_PENDING", "MERCHANT", "MERCHANT_REJECTED")
                         .requestMatchers("/api/v1/merchants/**")
-                        .hasAnyRole("MERCHANT_PENDING", "MERCHANT")
+                        .permitAll()
 
                         .requestMatchers("/api/v1/admin/**")
 
@@ -64,6 +57,8 @@ public class SecurityConfig {
 
                 .oauth2ResourceServer(oauth2 ->
                         oauth2
+                                .authenticationEntryPoint(apiAuthenticationEntryPoint)
+                                .accessDeniedHandler(apiAccessDeniedHandler)
                                 .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
 
 

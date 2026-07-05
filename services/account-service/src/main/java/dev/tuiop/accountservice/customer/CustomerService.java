@@ -4,6 +4,7 @@ import dev.tuiop.accountservice.customer.dto.CustomerRegistrationRequest;
 import dev.tuiop.accountservice.customer.exceptions.CustomerAlreadyExistsException;
 import dev.tuiop.accountservice.customer.mapper.CustomerMapper;
 import dev.tuiop.accountservice.common.exceptions.EmailAlreadyTakenException;
+import dev.tuiop.accountservice.merchant.MerchantRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final MerchantRepository merchantRepository;
     private final CustomerMapper customerMapper;
 
     @Transactional
@@ -23,9 +25,9 @@ public class CustomerService {
             String keycloakUserId,
             CustomerRegistrationRequest request
     ) {
-        String email = request.email().trim();
+        String email = request.email().trim().toLowerCase();
 
-        if (customerRepository.existsByEmailIgnoreCase(email)) {
+        if (customerRepository.existsByEmailIgnoreCase(email) || merchantRepository.existsByEmailIgnoreCase(email)) {
             throw new EmailAlreadyTakenException(email);
         }
 
@@ -40,15 +42,19 @@ public class CustomerService {
 
     @PreAuthorize("hasRole('CUSTOMER')")
     @Transactional(readOnly = true)
-    public Customer getMe(Jwt principal){
-        Customer me = customerRepository.findByKeycloakUserId(principal.getSubject())
-                .orElseThrow(() -> new EntityNotFoundException("Customer was not found with keyCloakUserId: " + principal.getSubject()));
+    public Customer getMe(String keycloakUserId){
 
 
 
 
-        return me;
 
+        return getByKeycloakUserId(keycloakUserId);
+
+    }
+
+    private Customer getByKeycloakUserId(String keycloakUserId){
+        Customer toReturn = customerRepository.findByKeycloakUserId(keycloakUserId).orElseThrow(() -> new EntityNotFoundException("Customer was not found with keycloakUserId: " + keycloakUserId));
+        return  toReturn;
     }
 
 }

@@ -21,6 +21,10 @@ public class Customer {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @Column(nullable = false, unique = true, updatable = false)
     private String keycloakUserId;
 
@@ -37,7 +41,7 @@ public class Customer {
     private String email;
 
     @Embedded
-    private Address adress;
+    private Address address;
 
     @Setter
     @Column(nullable = false)

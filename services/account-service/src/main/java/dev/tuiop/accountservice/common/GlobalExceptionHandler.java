@@ -3,6 +3,7 @@ package dev.tuiop.accountservice.common;
 import dev.tuiop.accountservice.common.exceptions.BusinessException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
@@ -81,6 +83,23 @@ public class GlobalExceptionHandler {
                         HttpStatus.CONFLICT.value(),
                         "DATA_INTEGRITY_VIOLATION",
                         "Resource violates a unique or integrity constraint",
+                        request.getRequestURI()
+                ));
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ApiError> handleRuntimeException(
+            RuntimeException exception,
+            HttpServletRequest request
+    ) {
+        log.error("Unhandled runtime exception for request {}", request.getRequestURI(), exception);
+
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiError.of(
+                        HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                        "INTERNAL_SERVER_ERROR",
+                        "Unexpected server error",
                         request.getRequestURI()
                 ));
     }

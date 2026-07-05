@@ -7,6 +7,7 @@ import dev.tuiop.accountservice.customer.dto.CustomerRegistrationRequest;
 import dev.tuiop.accountservice.common.exceptions.EmailAlreadyTakenException;
 import dev.tuiop.accountservice.merchant.MerchantRepository;
 import dev.tuiop.accountservice.security.keycloak.KeycloakIdentityService;
+import dev.tuiop.accountservice.security.keycloak.RealmRole;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,7 +23,7 @@ public class CustomerRegistrationService {
     public Customer register(
             CustomerRegistrationRequest request
     ) {
-        String email = request.email().trim();
+        String email = request.email().trim().toLowerCase();
 
         if (customerRepository.existsByEmailIgnoreCase(email)
                 || merchantRepository.existsByEmailIgnoreCase(email)) {
@@ -34,7 +35,7 @@ public class CustomerRegistrationService {
                 request.password(),
                 request.firstName(),
                 request.lastName(),
-                "CUSTOMER"
+                RealmRole.CUSTOMER
         );
 
         try {
@@ -45,8 +46,14 @@ public class CustomerRegistrationService {
 
             return customer;
         } catch (RuntimeException exception) {
-            identityService.deleteUser(keycloakUserId);
+            try {
+                identityService.deleteUser(keycloakUserId);
+            } catch (RuntimeException rollbackException) {
+                exception.addSuppressed(rollbackException);
+            }
             throw exception;
         }
     }
+
+
 }

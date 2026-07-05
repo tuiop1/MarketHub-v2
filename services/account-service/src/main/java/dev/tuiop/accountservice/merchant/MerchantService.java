@@ -1,9 +1,10 @@
 package dev.tuiop.accountservice.merchant;
 
+import dev.tuiop.accountservice.customer.CustomerRepository;
 import dev.tuiop.accountservice.merchant.dto.MerchantRegistrationRequest;
 import dev.tuiop.accountservice.common.exceptions.EmailAlreadyTakenException;
 import dev.tuiop.accountservice.merchant.exceptions.MerchantAlreadyExistsException;
-import dev.tuiop.accountservice.merchant.exceptions.ShopNameAlreadyTakenException;
+import dev.tuiop.accountservice.merchant.exceptions.MerchantShopNameTakenException;
 import dev.tuiop.accountservice.merchant.mapper.MerchantMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -21,10 +22,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class MerchantService {
 
     private final MerchantRepository merchantRepository;
+    private final CustomerRepository customerRepository;
     private final MerchantMapper merchantMapper;
 
 
-    @PreAuthorize("hasAnyRole('MERCHANT', 'MERCHANT_PENDING')")
     @Transactional(readOnly = true)
     public Merchant getMe(Jwt principal){
        Merchant merchant  = merchantRepository.findByKeycloakUserId(principal.getSubject()).orElseThrow(() ->
@@ -45,15 +46,16 @@ public class MerchantService {
 
     @Transactional
     public Merchant create(String keycloakUserId, MerchantRegistrationRequest request) {
-        String email = request.email().trim();
+        String email = request.email().trim().toLowerCase();
         String shopName = request.shopName().trim();
 
-        if (merchantRepository.existsByEmailIgnoreCase(email)) {
+        if (merchantRepository.existsByEmailIgnoreCase(email) ||
+            customerRepository.existsByEmailIgnoreCase(email)) {
             throw new EmailAlreadyTakenException(email);
         }
 
         if (merchantRepository.existsByShopNameIgnoreCase(shopName)) {
-            throw new ShopNameAlreadyTakenException(request.shopName());
+            throw new MerchantShopNameTakenException(request.shopName());
         }
 
         if (merchantRepository.existsByKeycloakUserId(keycloakUserId)) {

@@ -31,24 +31,24 @@ public class MerchantAdminController {
     }
 
     @PatchMapping("/{merchantId}/verify")
-    public ResponseEntity<MerchantResponse> verifyMerchant(@PathVariable UUID merchantId) {
-        return ResponseEntity.ok(merchantMapper.toResponse(merchantAdminService.verifyMerchant(merchantId)));
+    public ResponseEntity<Void> verifyMerchant(@PathVariable UUID merchantId) {
+        merchantAdminService.verifyMerchant(merchantId);
+
+        return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{merchantId}/reject")
-    public ResponseEntity<MerchantResponse> rejectMerchant(@PathVariable UUID merchantId) {
-        return ResponseEntity.ok(merchantMapper.toResponse(merchantAdminService.rejectMerchant(merchantId)));
+    public ResponseEntity<Void> rejectMerchant(@PathVariable UUID merchantId) {
+        merchantAdminService.rejectMerchant(merchantId);
+
+        return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{merchantId}/disable")
-    public ResponseEntity<MerchantResponse> suspendMerchant(@PathVariable UUID merchantId) {
-        return ResponseEntity.ok(merchantMapper.toResponse(merchantAdminService.suspendMerchant(merchantId)));
-    }
+    public ResponseEntity<Void> suspendMerchant(@PathVariable UUID merchantId) {
+        merchantAdminService.suspendMerchant(merchantId);
 
-    @PatchMapping("/{merchantId}/enable")
-    public ResponseEntity<MerchantResponse> enableMerchant(@PathVariable UUID merchantId) {
-        return ResponseEntity.ok(merchantMapper.toResponse(merchantAdminService.enableMerchant(merchantId)));
+        return ResponseEntity.noContent().build();
     }
-
 
 }

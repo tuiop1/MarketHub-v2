@@ -32,11 +32,11 @@ public class CustomerAdminService {
         }
 
         String keycloakUserId = customer.getKeycloakUserId();
-        boolean roleAdded = false;
-
+        boolean userEnabled = false;
         try {
-            keycloakIdentityService.addRealmRole(keycloakUserId, RealmRole.CUSTOMER);
-            roleAdded = true;
+
+            keycloakIdentityService.enableUser(keycloakUserId);
+            userEnabled = true;
 
             transactionTemplate.executeWithoutResult(status -> {
                 Customer customerToEnable = customerRepository.findById(customerId)
@@ -48,12 +48,13 @@ public class CustomerAdminService {
             });
 
         } catch (RuntimeException exception) {
-            if (roleAdded) {
-                try {
-                    keycloakIdentityService.removeRealmRole(keycloakUserId, RealmRole.CUSTOMER);
-                } catch (RuntimeException rollbackException) {
-                    exception.addSuppressed(rollbackException);
-                }
+
+            if(userEnabled){
+                    try {
+                        keycloakIdentityService.disableUser(keycloakUserId);
+                    } catch (RuntimeException rollbackException) {
+                        exception.addSuppressed(rollbackException);
+                    }
             }
 
             throw exception;
@@ -71,11 +72,12 @@ public class CustomerAdminService {
         }
 
         String keycloakUserId = customer.getKeycloakUserId();
-        boolean roleDeleted = false;
+
+        boolean userDisabled = false;
 
         try {
-            keycloakIdentityService.removeRealmRole(keycloakUserId, RealmRole.CUSTOMER);
-            roleDeleted = true;
+            keycloakIdentityService.disableUser(keycloakUserId);
+            userDisabled = true;
 
             transactionTemplate.executeWithoutResult(status -> {
                 Customer customerToDisable = customerRepository.findById(customerId)
@@ -87,9 +89,9 @@ public class CustomerAdminService {
             });
 
         } catch (RuntimeException exception) {
-            if (roleDeleted) {
+            if (userDisabled) {
                 try {
-                    keycloakIdentityService.addRealmRole(keycloakUserId, RealmRole.CUSTOMER);
+                    keycloakIdentityService.enableUser(keycloakUserId);
                 } catch (RuntimeException rollbackException) {
                     exception.addSuppressed(rollbackException);
                 }

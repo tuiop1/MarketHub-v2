@@ -1,4 +1,4 @@
-package dev.tuiop.accountservice.common;
+package dev.commonapi;
 
 import java.time.Instant;
 import java.util.Map;

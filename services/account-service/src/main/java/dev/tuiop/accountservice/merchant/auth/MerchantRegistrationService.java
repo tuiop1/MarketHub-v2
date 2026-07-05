@@ -6,8 +6,9 @@ import dev.tuiop.accountservice.merchant.Merchant;
 import dev.tuiop.accountservice.merchant.MerchantRepository;
 import dev.tuiop.accountservice.merchant.MerchantService;
 import dev.tuiop.accountservice.merchant.dto.MerchantRegistrationRequest;
-import dev.tuiop.accountservice.merchant.exceptions.ShopNameAlreadyTakenException;
+import dev.tuiop.accountservice.merchant.exceptions.MerchantShopNameTakenException;
 import dev.tuiop.accountservice.security.keycloak.KeycloakIdentityService;
+import dev.tuiop.accountservice.security.keycloak.RealmRole;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -23,7 +24,7 @@ public class MerchantRegistrationService {
     public Merchant register(
             MerchantRegistrationRequest request
     ) {
-        String email = request.email().trim();
+        String email = request.email().trim().toLowerCase();
         String shopName = request.shopName().trim();
 
         if (customerRepository.existsByEmailIgnoreCase(email)
@@ -32,7 +33,7 @@ public class MerchantRegistrationService {
         }
 
         if (merchantRepository.existsByShopNameIgnoreCase(shopName)) {
-            throw new ShopNameAlreadyTakenException(shopName);
+            throw new MerchantShopNameTakenException(shopName);
         }
 
         String keycloakUserId = identityService.createUser(
@@ -40,7 +41,7 @@ public class MerchantRegistrationService {
                 request.password(),
                 request.firstName(),
                 request.lastName(),
-                "MERCHANT_PENDING"
+                RealmRole.MERCHANT_PENDING
         );
 
         try {
@@ -51,8 +52,14 @@ public class MerchantRegistrationService {
 
             return merchant;
         } catch (RuntimeException exception) {
-            identityService.deleteUser(keycloakUserId);
+            try {
+                identityService.deleteUser(keycloakUserId);
+            } catch (RuntimeException rollbackException) {
+                exception.addSuppressed(rollbackException);
+            }
             throw exception;
         }
     }
+
+
 }

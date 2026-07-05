@@ -1,0 +1,38 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2026-07-05-001-add-customer-version
+      author: tuiop
+      labels: account-service
+      changes:
+        - addColumn:
+            tableName: customers
+            columns:
+              - column:
+                  name: version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: customers
+            columnName: version
+
+  - changeSet:
+      id: 2026-07-05-002-add-merchant-version
+      author: tuiop
+      labels: account-service
+      changes:
+        - addColumn:
+            tableName: merchants
+            columns:
+              - column:
+                  name: version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: merchants
+            columnName: version

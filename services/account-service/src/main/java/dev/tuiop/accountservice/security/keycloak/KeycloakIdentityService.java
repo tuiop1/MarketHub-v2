@@ -7,6 +7,7 @@ import jakarta.ws.rs.core.Response;
 import org.keycloak.admin.client.CreatedResponseUtil;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.RealmResource;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
@@ -35,7 +36,7 @@ public class KeycloakIdentityService {
     public String createUser(
             String email,
             String password,
-            String realmRole
+            RealmRole realmRole
 
     ){
         return createUser(email, password, null, null, realmRole);
@@ -46,7 +47,7 @@ public class KeycloakIdentityService {
             String password,
             String firstName,
             String lastName,
-            String realmRole
+            RealmRole realmRole
 
     ){
         RealmResource realm = keycloak.realm(realmName);
@@ -82,7 +83,7 @@ public class KeycloakIdentityService {
         }
         try {
             RoleRepresentation role = realm.roles()
-                    .get(realmRole)
+                    .get(realmRole.toString())
                     .toRepresentation();
 
             realm.users()
@@ -148,6 +149,27 @@ public class KeycloakIdentityService {
                 .remove(List.of(role));
     }
 
+    public void enableUser(String keycloakUserId) {
+        UserResource userResource = keycloak.realm(realmName)
+                .users()
+                .get(keycloakUserId);
 
+        UserRepresentation user = userResource.toRepresentation();
+        user.setEnabled(true);
+        userResource.update(user);
+    }
+
+
+    public void disableUser(String keycloakUserId) {
+        UserResource userResource = keycloak.realm(realmName)
+                .users()
+                .get(keycloakUserId);
+
+        UserRepresentation user = userResource.toRepresentation();
+        user.setEnabled(false);
+        userResource.update(user);
+
+        userResource.logout();
+    }
 
 }

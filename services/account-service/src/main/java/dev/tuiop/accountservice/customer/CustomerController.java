@@ -25,7 +25,7 @@ public class CustomerController {
     @PreAuthorize("hasRole('CUSTOMER')")
     @GetMapping("/me")
     public ResponseEntity<CustomerResponse> getMe(@AuthenticationPrincipal Jwt principal){
-        return ResponseEntity.ok(customerMapper.toResponse(customerService.getMe(principal)));
+        return ResponseEntity.ok(customerMapper.toResponse(customerService.getMe(principal.getSubject())));
 
     }
 }
