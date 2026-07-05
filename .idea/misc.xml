@@ -17,6 +17,8 @@
       <list>
         <option value="$PROJECT_DIR$/pom.xml" />
         <option value="$PROJECT_DIR$/services/account-service/pom.xml" />
+        <option value="$PROJECT_DIR$/libs/common-api/pom.xml" />
+        <option value="$PROJECT_DIR$/services/catalog-service/pom.xml" />
       </list>
     </option>
   </component>

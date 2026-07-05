@@ -1,5 +1,7 @@
 package dev.tuiop.accountservice.common;
 
+import dev.commonapi.ApiError;
+import dev.commonapi.ValidationApiError;
 import dev.tuiop.accountservice.common.exceptions.BusinessException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
