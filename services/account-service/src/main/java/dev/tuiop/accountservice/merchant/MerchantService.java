@@ -1,12 +1,12 @@
 package dev.tuiop.accountservice.merchant;
 
 import dev.tuiop.accountservice.customer.CustomerRepository;
+import dev.tuiop.accountservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.accountservice.merchant.dto.MerchantRegistrationRequest;
 import dev.tuiop.accountservice.common.exceptions.EmailAlreadyTakenException;
 import dev.tuiop.accountservice.merchant.exceptions.MerchantAlreadyExistsException;
 import dev.tuiop.accountservice.merchant.exceptions.MerchantShopNameTakenException;
 import dev.tuiop.accountservice.merchant.mapper.MerchantMapper;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -15,6 +15,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -28,10 +30,23 @@ public class MerchantService {
 
     @Transactional(readOnly = true)
     public Merchant getMe(Jwt principal){
-       Merchant merchant  = merchantRepository.findByKeycloakUserId(principal.getSubject()).orElseThrow(() ->
-               new EntityNotFoundException("Merchant not found for keycloakUserId " + principal.getSubject()));
+       return getByKeycloakUserId(principal.getSubject());
+    }
 
-       return merchant;
+    @Transactional(readOnly = true)
+    public Merchant getById(UUID merchantId) {
+        return merchantRepository.findById(merchantId)
+                .orElseThrow(() -> new ResourceNotFoundException(Merchant.class, merchantId));
+    }
+
+    @Transactional(readOnly = true)
+    public Merchant getByKeycloakUserId(String keycloakUserId) {
+        return merchantRepository.findByKeycloakUserId(keycloakUserId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        Merchant.class,
+                        "keycloakUserId",
+                        keycloakUserId
+                ));
     }
 
     @Transactional(readOnly = true)

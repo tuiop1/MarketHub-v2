@@ -1,12 +1,12 @@
 package dev.tuiop.accountservice.merchant.admin;
 
+import dev.tuiop.accountservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.accountservice.merchant.Merchant;
 import dev.tuiop.accountservice.merchant.MerchantRepository;
 import dev.tuiop.accountservice.merchant.MerchantStatus;
 import dev.tuiop.accountservice.merchant.exceptions.MerchantInvalidStatusTransitionException;
 import dev.tuiop.accountservice.security.keycloak.KeycloakIdentityService;
 import dev.tuiop.accountservice.security.keycloak.RealmRole;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -36,7 +36,7 @@ public class MerchantAdminService {
 
     public void verifyMerchant(UUID merchantId) {
         Merchant merchant = merchantRepository.findById(merchantId)
-                .orElseThrow(() -> new EntityNotFoundException("Merchant not found: " + merchantId));
+                .orElseThrow(() -> new ResourceNotFoundException(Merchant.class, merchantId));
 
         if (merchant.getStatus() == MerchantStatus.VERIFIED) {
             return;
@@ -58,7 +58,7 @@ public class MerchantAdminService {
 
             transactionTemplate.executeWithoutResult(status -> {
                 Merchant merchantToVerify = merchantRepository.findById(merchantId)
-                        .orElseThrow(() -> new EntityNotFoundException("Merchant not found: " + merchantId));
+                        .orElseThrow(() -> new ResourceNotFoundException(Merchant.class, merchantId));
 
                 verify(merchantToVerify);
                 log.info(
@@ -90,7 +90,7 @@ public class MerchantAdminService {
 
     public void rejectMerchant(UUID merchantId) {
         Merchant merchant = merchantRepository.findById(merchantId)
-                .orElseThrow(() -> new EntityNotFoundException("Merchant not found: " + merchantId));
+                .orElseThrow(() -> new ResourceNotFoundException(Merchant.class, merchantId));
 
         if (merchant.getStatus() == MerchantStatus.REJECTED) {
             return;
@@ -112,7 +112,7 @@ public class MerchantAdminService {
 
             transactionTemplate.executeWithoutResult(status -> {
                 Merchant merchantToReject = merchantRepository.findById(merchantId)
-                        .orElseThrow(() -> new EntityNotFoundException("Merchant not found: " + merchantId));
+                        .orElseThrow(() -> new ResourceNotFoundException(Merchant.class, merchantId));
 
                 reject(merchantToReject);
                 log.info(
@@ -144,7 +144,7 @@ public class MerchantAdminService {
 
     public void suspendMerchant(UUID merchantId) {
         Merchant merchant = merchantRepository.findById(merchantId)
-                .orElseThrow(() -> new EntityNotFoundException("Merchant not found: " + merchantId));
+                .orElseThrow(() -> new ResourceNotFoundException(Merchant.class, merchantId));
 
         if (merchant.getStatus() == MerchantStatus.SUSPENDED) {
             return;
@@ -162,7 +162,7 @@ public class MerchantAdminService {
 
             transactionTemplate.executeWithoutResult(status -> {
                 Merchant merchantToSuspend = merchantRepository.findById(merchantId)
-                        .orElseThrow(() -> new EntityNotFoundException("Merchant not found: " + merchantId));
+                        .orElseThrow(() -> new ResourceNotFoundException(Merchant.class, merchantId));
 
                 suspend(merchantToSuspend);
                 log.warn(

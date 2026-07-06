@@ -1,4 +1,4 @@
-package dev.tuiop.accountservice.security;
+package dev.tuiop.catalogservice.security;
 
 import dev.tuiop.commonapi.ApiError;
 import jakarta.servlet.http.HttpServletRequest;

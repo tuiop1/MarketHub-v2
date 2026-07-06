@@ -4,8 +4,8 @@ import dev.tuiop.accountservice.customer.dto.CustomerRegistrationRequest;
 import dev.tuiop.accountservice.customer.exceptions.CustomerAlreadyExistsException;
 import dev.tuiop.accountservice.customer.mapper.CustomerMapper;
 import dev.tuiop.accountservice.common.exceptions.EmailAlreadyTakenException;
+import dev.tuiop.accountservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.accountservice.merchant.MerchantRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -53,7 +53,12 @@ public class CustomerService {
     }
 
     private Customer getByKeycloakUserId(String keycloakUserId){
-        Customer toReturn = customerRepository.findByKeycloakUserId(keycloakUserId).orElseThrow(() -> new EntityNotFoundException("Customer was not found with keycloakUserId: " + keycloakUserId));
+        Customer toReturn = customerRepository.findByKeycloakUserId(keycloakUserId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        Customer.class,
+                        "keycloakUserId",
+                        keycloakUserId
+                ));
         return  toReturn;
     }
 

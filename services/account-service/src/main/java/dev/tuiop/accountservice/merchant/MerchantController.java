@@ -11,6 +11,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @RequestMapping("/api/v1/merchants")
 @RestController
 @RequiredArgsConstructor
@@ -28,6 +30,20 @@ public class MerchantController {
                 .map(merchantMapper::toResponse);
 
         return ResponseEntity.ok(merchants);
+    }
+
+    @GetMapping("/{merchantId}")
+    public ResponseEntity<MerchantResponse> getMerchantById(@PathVariable UUID merchantId) {
+        return ResponseEntity.ok(merchantMapper.toResponse(merchantService.getById(merchantId)));
+    }
+
+    @GetMapping("/keycloak/{keycloakUserId}")
+    public ResponseEntity<MerchantResponse> getMerchantByKeycloakUserId(
+            @PathVariable String keycloakUserId
+    ) {
+        return ResponseEntity.ok(merchantMapper.toResponse(
+                merchantService.getByKeycloakUserId(keycloakUserId)
+        ));
     }
 
 

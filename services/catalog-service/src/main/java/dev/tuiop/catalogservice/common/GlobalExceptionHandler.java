@@ -1,9 +1,9 @@
-package dev.tuiop.accountservice.common;
+package dev.tuiop.catalogservice.common;
 
+import dev.tuiop.catalogservice.common.exceptions.BusinessException;
+import dev.tuiop.catalogservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.commonapi.ApiError;
 import dev.tuiop.commonapi.ValidationApiError;
-import dev.tuiop.accountservice.common.exceptions.BusinessException;
-import dev.tuiop.accountservice.common.exceptions.ResourceNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;

@@ -1,4 +1,4 @@
-package dev.commonapi;
+package dev.tuiop.commonapi;
 
 import java.time.Instant;
 import java.util.Map;

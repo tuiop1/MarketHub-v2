@@ -1,0 +1,157 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2026-07-07-001-create-categories
+      author: tuiop
+      labels: catalog-service
+      changes:
+        - createTable:
+            tableName: categories
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_categories
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(1000)
+              - column:
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: categories
+            columnNames: name
+            constraintName: uq_categories_name
+        - createIndex:
+            tableName: categories
+            indexName: idx_categories_name
+            columns:
+              - column:
+                  name: name
+      rollback:
+        - dropTable:
+            tableName: categories
+
+  - changeSet:
+      id: 2026-07-07-002-create-products
+      author: tuiop
+      labels: catalog-service
+      changes:
+        - createTable:
+            tableName: products
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_products
+              - column:
+                  name: merchant_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: category_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(5000)
+              - column:
+                  name: price_cents
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: stock_quantity
+                  type: integer
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: products
+            baseColumnNames: category_id
+            constraintName: fk_products_category
+            referencedTableName: categories
+            referencedColumnNames: id
+        - createIndex:
+            tableName: products
+            indexName: idx_products_merchant_id
+            columns:
+              - column:
+                  name: merchant_id
+        - createIndex:
+            tableName: products
+            indexName: idx_products_category_id
+            columns:
+              - column:
+                  name: category_id
+        - createIndex:
+            tableName: products
+            indexName: idx_products_name
+            columns:
+              - column:
+                  name: name
+        - sql:
+            sql: >-
+              ALTER TABLE products
+              ADD CONSTRAINT chk_products_price_positive
+              CHECK (price_cents > 0)
+            rollback: ALTER TABLE products DROP CONSTRAINT chk_products_price_positive
+        - sql:
+            sql: >-
+              ALTER TABLE products
+              ADD CONSTRAINT chk_products_stock_non_negative
+              CHECK (stock_quantity >= 0)
+            rollback: ALTER TABLE products DROP CONSTRAINT chk_products_stock_non_negative
+      rollback:
+        - dropTable:
+            tableName: products

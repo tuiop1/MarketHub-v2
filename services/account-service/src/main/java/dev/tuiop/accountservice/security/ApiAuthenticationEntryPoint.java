@@ -1,6 +1,6 @@
 package dev.tuiop.accountservice.security;
 
-import dev.commonapi.ApiError;
+import dev.tuiop.commonapi.ApiError;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;

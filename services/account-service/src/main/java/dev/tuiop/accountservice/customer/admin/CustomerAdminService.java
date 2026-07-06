@@ -1,10 +1,10 @@
 package dev.tuiop.accountservice.customer.admin;
 
+import dev.tuiop.accountservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.accountservice.customer.Customer;
 import dev.tuiop.accountservice.customer.CustomerRepository;
 import dev.tuiop.accountservice.security.keycloak.KeycloakIdentityService;
 import dev.tuiop.accountservice.security.keycloak.RealmRole;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -23,9 +23,7 @@ public class CustomerAdminService {
 
     public void enable(UUID customerId) {
         Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Customer was not found with id: " + customerId
-                ));
+                .orElseThrow(() -> new ResourceNotFoundException(Customer.class, customerId));
 
         if (Boolean.TRUE.equals(customer.getEnabled())) {
             return;
@@ -40,9 +38,7 @@ public class CustomerAdminService {
 
             transactionTemplate.executeWithoutResult(status -> {
                 Customer customerToEnable = customerRepository.findById(customerId)
-                        .orElseThrow(() -> new EntityNotFoundException(
-                                "Customer was not found with id: " + customerId
-                        ));
+                        .orElseThrow(() -> new ResourceNotFoundException(Customer.class, customerId));
 
                 customerToEnable.enable();
             });
@@ -63,9 +59,7 @@ public class CustomerAdminService {
 
     public void disable(UUID customerId) {
         Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Customer was not found with id: " + customerId
-                ));
+                .orElseThrow(() -> new ResourceNotFoundException(Customer.class, customerId));
 
         if (!Boolean.TRUE.equals(customer.getEnabled())) {
             return;
@@ -81,9 +75,7 @@ public class CustomerAdminService {
 
             transactionTemplate.executeWithoutResult(status -> {
                 Customer customerToDisable = customerRepository.findById(customerId)
-                        .orElseThrow(() -> new EntityNotFoundException(
-                                "Customer was not found with id: " + customerId
-                        ));
+                        .orElseThrow(() -> new ResourceNotFoundException(Customer.class, customerId));
 
                 customerToDisable.disable();
             });
