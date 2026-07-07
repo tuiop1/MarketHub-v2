@@ -9,7 +9,7 @@ public record UpdateCategoryRequest(
         @Size(max = 255)
         String name,
 
-        @Size(max = 2000)
+        @Size(max = 1000)
         String description
 ) {
 }

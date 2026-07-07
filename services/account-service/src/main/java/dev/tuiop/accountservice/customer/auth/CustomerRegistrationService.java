@@ -11,6 +11,8 @@ import dev.tuiop.accountservice.security.keycloak.RealmRole;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Locale;
+
 @Service
 @RequiredArgsConstructor
 public class CustomerRegistrationService {
@@ -23,7 +25,7 @@ public class CustomerRegistrationService {
     public Customer register(
             CustomerRegistrationRequest request
     ) {
-        String email = request.email().trim().toLowerCase();
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
 
         if (customerRepository.existsByEmailIgnoreCase(email)
                 || merchantRepository.existsByEmailIgnoreCase(email)) {
@@ -41,6 +43,7 @@ public class CustomerRegistrationService {
         try {
             Customer customer = customerService.create(
                     keycloakUserId,
+                    email,
                     request
             );
 

@@ -4,10 +4,11 @@ package dev.tuiop.catalogservice.products;
 
 import dev.tuiop.catalogservice.categories.Category;
 import dev.tuiop.catalogservice.categories.CategoryRepository;
-import dev.tuiop.catalogservice.client.merchants.AccountMerchantClient;
-import dev.tuiop.catalogservice.client.merchants.MerchantResponse;
-import dev.tuiop.catalogservice.client.merchants.MerchantStatus;
-import dev.tuiop.catalogservice.client.merchants.exceptions.MerchantInvalidStatusException;
+import dev.tuiop.catalogservice.merchants.AccountMerchantClient;
+import dev.tuiop.catalogservice.merchants.MerchantResponse;
+import dev.tuiop.catalogservice.merchants.MerchantStatus;
+import dev.tuiop.catalogservice.merchants.exceptions.AccountServiceException;
+import dev.tuiop.catalogservice.merchants.exceptions.MerchantInvalidStatusException;
 import dev.tuiop.catalogservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.catalogservice.products.dto.CreateProductRequest;
 import dev.tuiop.catalogservice.products.dto.ProductResponse;
@@ -22,6 +23,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 
 import java.util.UUID;
 
@@ -81,7 +84,7 @@ public class ProductService {
     public ProductResponse getMyProduct(Jwt jwt, UUID productId) {
         MerchantResponse merchantResponse = getMerchantByKeycloakUserId(jwt.getSubject());
 
-        Product product = productRepository.findLockedByIdAndMerchantId(productId, merchantResponse.id())
+        Product product = productRepository.findByIdAndMerchantId(productId, merchantResponse.id())
                 .orElseThrow(() -> new ResourceNotFoundException(Product.class, productId));
 
         return productMapper.toResponse(product);
@@ -129,7 +132,7 @@ public class ProductService {
     @Transactional
     public void deleteMyProduct(Jwt jwt, UUID productId) {
         MerchantResponse merchantResponse = getMerchantByKeycloakUserId(jwt.getSubject());
-
+        validateMerchantCanManageProducts(merchantResponse);
         Product product = productRepository.findByIdAndMerchantId(productId, merchantResponse.id())
                 .orElseThrow(() -> new ResourceNotFoundException(Product.class, productId));
 
@@ -191,6 +194,15 @@ public class ProductService {
             return accountMerchantClient.getMerchantByKeycloakUserId(keycloakId);
         } catch (HttpClientErrorException.NotFound exception ){
             throw new ResourceNotFoundException(MerchantResponse.class, "keycloakId", keycloakId);
+        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
+            log.warn("Account service authorization failed while getting merchant by keycloak id", exception);
+            throw AccountServiceException.unauthorized(exception);
+        } catch (ResourceAccessException exception) {
+            log.warn("Account service request failed while getting merchant by keycloak id", exception);
+            throw AccountServiceException.unavailable(exception);
+        } catch (RestClientException exception) {
+            log.warn("Account service client failed while getting merchant by keycloak id", exception);
+            throw AccountServiceException.unavailable(exception);
         }
     }
 
@@ -199,6 +211,15 @@ public class ProductService {
             return accountMerchantClient.getMerchant(merchantId);
         } catch (HttpClientErrorException.NotFound exception) {
             throw new ResourceNotFoundException(Product.class, productId);
+        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
+            log.warn("Account service authorization failed while getting merchant by id: merchantId={}", merchantId, exception);
+            throw AccountServiceException.unauthorized(exception);
+        } catch (ResourceAccessException exception) {
+            log.warn("Account service request failed while getting merchant by id: merchantId={}", merchantId, exception);
+            throw AccountServiceException.unavailable(exception);
+        } catch (RestClientException exception) {
+            log.warn("Account service client failed while getting merchant by id: merchantId={}", merchantId, exception);
+            throw AccountServiceException.unavailable(exception);
         }
     }
 

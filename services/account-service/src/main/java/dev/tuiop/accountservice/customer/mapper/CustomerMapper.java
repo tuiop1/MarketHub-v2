@@ -15,12 +15,12 @@ public interface CustomerMapper {
     @Mapping(target = "firstName", source = "request.firstName")
     @Mapping(target = "lastName", source = "request.lastName")
     @Mapping(target = "birthDate", source = "request.birthDate")
-    @Mapping(target = "email", expression = "java(request.email().trim())")
+    @Mapping(target = "email", source = "email")
     @Mapping(target = "address", source = "request.address")
     @Mapping(target = "enabled", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    Customer toEntity(String keycloakUserId, CustomerRegistrationRequest request);
+    Customer toEntity(String keycloakUserId, String email, CustomerRegistrationRequest request);
 
     @Mapping(target = "address", source = "address")
     CustomerResponse toResponse(Customer customer);

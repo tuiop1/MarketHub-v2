@@ -23,9 +23,10 @@ public class CustomerService {
     @Transactional
     public Customer create(
             String keycloakUserId,
+            String normalizedEmail,
             CustomerRegistrationRequest request
     ) {
-        String email = request.email().trim().toLowerCase();
+        String email = normalizedEmail;
 
         if (customerRepository.existsByEmailIgnoreCase(email) || merchantRepository.existsByEmailIgnoreCase(email)) {
             throw new EmailAlreadyTakenException(email);
@@ -35,7 +36,7 @@ public class CustomerService {
             throw new CustomerAlreadyExistsException();
         }
 
-        Customer customer = customerMapper.toEntity(keycloakUserId, request);
+        Customer customer = customerMapper.toEntity(keycloakUserId, email, request);
 
         return customerRepository.save(customer);
     }

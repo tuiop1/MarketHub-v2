@@ -3,3 +3,5 @@ databaseChangeLog:
       file: db/changelog/changes/2026-07-02-001-create-account-schema.yaml
   - include:
       file: db/changelog/changes/2026-07-05-001-add-optimistic-locking-versions.yaml
+  - include:
+      file: db/changelog/changes/2026-07-07-001-normalize-email-uniqueness.yaml

@@ -1,4 +1,4 @@
-package dev.tuiop.catalogservice.common.exceptions;
+package dev.tuiop.orderservice.common.exceptions;
 
 public abstract class BusinessException extends RuntimeException {
 

@@ -1,5 +1,6 @@
 package dev.tuiop.accountservice.security;
 
+import dev.tuiop.accountservice.merchant.MerchantStatus;
 import dev.tuiop.accountservice.security.keycloak.KeycloakRealmRoleConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,6 +36,8 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/v1/customers/")
                         .hasRole("CUSTOMER")
+                        .requestMatchers(HttpMethod.GET, "api/v1/merchants/me")
+                        .hasAnyRole("MERCHANT_VERIFIED", "")
                         .requestMatchers("/api/v1/customers/**")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/v1/merchants/me")

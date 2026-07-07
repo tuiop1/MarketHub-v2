@@ -60,8 +60,8 @@ public class MerchantService {
 
 
     @Transactional
-    public Merchant create(String keycloakUserId, MerchantRegistrationRequest request) {
-        String email = request.email().trim().toLowerCase();
+    public Merchant create(String keycloakUserId, String normalizedEmail, MerchantRegistrationRequest request) {
+        String email = normalizedEmail;
         String shopName = request.shopName().trim();
 
         if (merchantRepository.existsByEmailIgnoreCase(email) ||
@@ -77,7 +77,7 @@ public class MerchantService {
             throw new MerchantAlreadyExistsException();
         }
 
-        Merchant merchant = merchantMapper.toEntity(keycloakUserId, request);
+        Merchant merchant = merchantMapper.toEntity(keycloakUserId, email, request);
         Merchant savedMerchant = merchantRepository.save(merchant);
 
         log.info(

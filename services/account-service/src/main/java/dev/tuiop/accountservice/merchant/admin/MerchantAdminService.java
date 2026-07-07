@@ -102,6 +102,7 @@ public class MerchantAdminService {
         String keycloakUserId = merchant.getKeycloakUserId();
         boolean pendingRoleRemoved = false;
         boolean merchantRoleRemoved = false;
+        boolean rejectedRoleAdded = false;
 
         try {
             keycloakIdentityService.removeRealmRole(keycloakUserId, RealmRole.MERCHANT_PENDING);
@@ -109,6 +110,9 @@ public class MerchantAdminService {
 
             keycloakIdentityService.removeRealmRole(keycloakUserId, RealmRole.MERCHANT);
             merchantRoleRemoved = true;
+
+            keycloakIdentityService.addRealmRole(keycloakUserId, RealmRole.MERCHANT_REJECTED);
+            rejectedRoleAdded = true;
 
             transactionTemplate.executeWithoutResult(status -> {
                 Merchant merchantToReject = merchantRepository.findById(merchantId)
@@ -122,6 +126,14 @@ public class MerchantAdminService {
                 );
             });
         } catch (RuntimeException exception) {
+            if (rejectedRoleAdded) {
+                try {
+                    keycloakIdentityService.removeRealmRole(keycloakUserId, RealmRole.MERCHANT_REJECTED);
+                } catch (RuntimeException rollbackException) {
+                    exception.addSuppressed(rollbackException);
+                }
+            }
+
             if (merchantRoleRemoved && merchant.getStatus() == MerchantStatus.VERIFIED) {
                 try {
                     keycloakIdentityService.addRealmRole(keycloakUserId, RealmRole.MERCHANT);
