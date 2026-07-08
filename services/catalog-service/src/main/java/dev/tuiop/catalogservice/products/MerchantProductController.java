@@ -26,42 +26,42 @@ public class MerchantProductController {
 
     @PostMapping
     public ResponseEntity<ProductResponse> createProduct(
-            @AuthenticationPrincipal Jwt principal,
+            @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody CreateProductRequest request
     ) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(productService.createMyProduct(principal, request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(productService.createMyProduct(jwt, request));
     }
 
     @GetMapping
     public ResponseEntity<Page<ProductResponse>> getMyProducts(
-            @AuthenticationPrincipal Jwt principal,
+            @AuthenticationPrincipal Jwt jwt,
             Pageable pageable
     ) {
-        return ResponseEntity.ok( productService.getMyProducts(principal, pageable));
+        return ResponseEntity.ok( productService.getMyProducts(jwt, pageable));
     }
 
     @GetMapping("/{productId}")
     public ResponseEntity<ProductResponse> getMyProduct(
-            @AuthenticationPrincipal Jwt principal,
+            @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID productId
     ) {
-        return ResponseEntity.ok( productService.getMyProduct(principal, productId));
+        return ResponseEntity.ok( productService.getMyProduct(jwt, productId));
     }
 
     @PutMapping("/{productId}")
     public ResponseEntity<ProductResponse> updateProduct(
-            @AuthenticationPrincipal Jwt principal,
+            @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID productId,
             @Valid @RequestBody UpdateProductRequest request
     ) {
-        return ResponseEntity.ok(productService.updateMyProduct(principal, productId, request));
+        return ResponseEntity.ok(productService.updateMyProduct(jwt, productId, request));
     }
 
     @DeleteMapping("/{productId}")
     public void deleteProduct(
-            @AuthenticationPrincipal Jwt principal,
+            @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID productId
     ) {
-        productService.deleteMyProduct(principal, productId);
+        productService.deleteMyProduct(jwt, productId);
     }
 }

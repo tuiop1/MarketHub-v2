@@ -1,6 +1,6 @@
-package dev.tuiop.catalogservice.client.merchants.exceptions;
+package dev.tuiop.catalogservice.merchants.exceptions;
 
-import dev.tuiop.catalogservice.client.merchants.MerchantStatus;
+import dev.tuiop.catalogservice.merchants.MerchantStatus;
 import dev.tuiop.catalogservice.common.exceptions.BusinessException;
 
 public class MerchantInvalidStatusException extends BusinessException {

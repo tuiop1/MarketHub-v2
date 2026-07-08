@@ -11,7 +11,9 @@ import dev.tuiop.catalogservice.merchants.exceptions.AccountServiceException;
 import dev.tuiop.catalogservice.merchants.exceptions.MerchantInvalidStatusException;
 import dev.tuiop.catalogservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.catalogservice.products.dto.CreateProductRequest;
+import dev.tuiop.catalogservice.products.dto.ProductPurchaseResponse;
 import dev.tuiop.catalogservice.products.dto.ProductResponse;
+import dev.tuiop.catalogservice.products.dto.ProductStockDecreaseRequest;
 import dev.tuiop.catalogservice.products.dto.UpdateProductRequest;
 import dev.tuiop.catalogservice.products.mapper.ProductMapper;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +28,13 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -166,6 +174,41 @@ public class ProductService {
         return productMapper.toResponse(product);
     }
 
+    @Transactional
+    public List<ProductPurchaseResponse> findBuyableByIdsForUpdate(Collection<UUID> productIds) {
+        Map<UUID, Product> productsById = productRepository.findBuyableByIdsForUpdate(productIds)
+                .stream()
+                .collect(Collectors.toMap(Product::getId, Function.identity()));
+
+        validateAllProductsFound(productIds, productsById);
+
+        return productsById.values()
+                .stream()
+                .map(this::toPurchaseResponse)
+                .toList();
+    }
+
+    @Transactional
+    public List<ProductPurchaseResponse> decreaseStock(Collection<ProductStockDecreaseRequest> requests) {
+        Map<UUID, Integer> quantitiesByProductId = mergeQuantitiesByProductId(requests);
+
+        Map<UUID, Product> productsById = productRepository.findBuyableByIdsForUpdate(quantitiesByProductId.keySet())
+                .stream()
+                .collect(Collectors.toMap(Product::getId, Function.identity()));
+
+        validateAllProductsFound(quantitiesByProductId.keySet(), productsById);
+
+        for (Map.Entry<UUID, Integer> entry : quantitiesByProductId.entrySet()) {
+            Product product = productsById.get(entry.getKey());
+            product.decreaseStock(entry.getValue());
+        }
+
+        return productsById.values()
+                .stream()
+                .map(this::toPurchaseResponse)
+                .toList();
+    }
+
 //    private Page<ProductResponse> toResponsePageWithImages(Page<Product> products) {
 //        List<UUID> productIds = products.getContent()
 //                .stream()
@@ -227,6 +270,49 @@ public class ProductService {
 
         return categoryRepository.findByIdAndActiveTrue(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException(Category.class, categoryId));
+    }
+
+    private Map<UUID, Integer> mergeQuantitiesByProductId(Collection<ProductStockDecreaseRequest> requests) {
+        Map<UUID, Integer> quantitiesByProductId = new LinkedHashMap<>();
+
+        for (ProductStockDecreaseRequest request : requests) {
+            quantitiesByProductId.merge(request.productId(), request.quantity(), Integer::sum);
+        }
+
+        return quantitiesByProductId;
+    }
+
+    private void validateAllProductsFound(
+            Collection<UUID> requestedProductIds,
+            Map<UUID, Product> productsById
+    ) {
+        for (UUID requestedProductId : requestedProductIds) {
+            if (!productsById.containsKey(requestedProductId)) {
+                throw new ResourceNotFoundException(Product.class, requestedProductId);
+            }
+        }
+    }
+
+    private ProductPurchaseResponse toPurchaseResponse(Product product) {
+        MerchantResponse merchant = getPublicMerchant(product.getMerchantId(), product.getId());
+
+        if (merchant.status() != MerchantStatus.VERIFIED) {
+            throw new ResourceNotFoundException(Product.class, product.getId());
+        }
+
+        return new ProductPurchaseResponse(
+                product.getId(),
+                product.getMerchantId(),
+                merchant.shopName(),
+                product.getCategory().getId(),
+                product.getName(),
+                product.getDescription(),
+                product.getPriceCents(),
+                product.getStockQuantity(),
+                product.getActive(),
+                product.getCreatedAt(),
+                product.getUpdatedAt()
+        );
     }
 
     private void validateMerchantCanManageProducts(MerchantResponse merchant) {

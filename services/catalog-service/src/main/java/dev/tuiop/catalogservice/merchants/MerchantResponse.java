@@ -1,4 +1,4 @@
-package dev.tuiop.catalogservice.client.merchants;
+package dev.tuiop.catalogservice.merchants;
 
 import java.time.Instant;
 import java.util.UUID;

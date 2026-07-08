@@ -1,7 +1,6 @@
 package dev.tuiop.orderservice.orders;
 
 
-import dev.tuiop.orderservice.merchants.MerchantResponse;
 import dev.tuiop.orderservice.products.ProductResponse;
 import jakarta.persistence.*;
 import lombok.*;
@@ -59,7 +58,7 @@ public class OrderItem {
         }
     }
 
-    public static OrderItem fromProduct(ProductResponse product, MerchantResponse merchant, Integer quantity){
+    public static OrderItem fromProduct(ProductResponse product, Integer quantity){
 
         if(quantity <= 0) throw new IllegalArgumentException("Quantity of products must be positive ");
 
@@ -67,7 +66,7 @@ public class OrderItem {
                 .productId(product.id())
                 .merchantId(product.merchantId())
                 .productNameSnapshot(product.name())
-                .merchantNameSnapshot(merchant.shopName())
+                .merchantNameSnapshot(product.merchantName())
                 .priceSnapshotCents(product.priceCents())
                 .quantity(quantity)
                 .totalPriceSnapshotCents(Math.multiplyExact(quantity, product.priceCents()))

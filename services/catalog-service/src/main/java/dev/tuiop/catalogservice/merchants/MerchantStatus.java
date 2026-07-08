@@ -1,4 +1,4 @@
-package dev.tuiop.catalogservice.client.merchants;
+package dev.tuiop.catalogservice.merchants;
 
 public enum MerchantStatus {
     PENDING,

@@ -8,9 +8,10 @@ import dev.tuiop.accountservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.accountservice.merchant.MerchantRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -53,14 +54,20 @@ public class CustomerService {
 
     }
 
-    private Customer getByKeycloakUserId(String keycloakUserId){
-        Customer toReturn = customerRepository.findByKeycloakUserId(keycloakUserId)
+    @Transactional(readOnly = true)
+    public Customer getById(UUID customerId) {
+        return customerRepository.findById(customerId)
+                .orElseThrow(() -> new ResourceNotFoundException(Customer.class, customerId));
+    }
+
+    @Transactional(readOnly = true)
+    public Customer getByKeycloakUserId(String keycloakUserId){
+        return customerRepository.findByKeycloakUserId(keycloakUserId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         Customer.class,
                         "keycloakUserId",
                         keycloakUserId
                 ));
-        return  toReturn;
     }
 
 }

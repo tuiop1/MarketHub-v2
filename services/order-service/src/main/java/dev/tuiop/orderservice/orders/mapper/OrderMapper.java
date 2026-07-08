@@ -1,7 +1,8 @@
 package dev.tuiop.orderservice.orders.mapper;
 
-import com.tuiop.markethub.orders.Order;
-import com.tuiop.markethub.orders.dto.OrderResponse;
+import dev.tuiop.orderservice.orders.Order;
+import dev.tuiop.orderservice.orders.dto.OrderResponse;
+
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -9,5 +10,5 @@ import org.mapstruct.Mapping;
 public interface OrderMapper {
 
     @Mapping(target = "items", source = "orderItems")
-   OrderResponse toOrderResponse(Order order) ;
+    OrderResponse toOrderResponse(Order order) ;
 }

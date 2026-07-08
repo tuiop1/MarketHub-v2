@@ -37,7 +37,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,"/api/v1/customers/")
                         .hasRole("CUSTOMER")
                         .requestMatchers(HttpMethod.GET, "api/v1/merchants/me")
-                        .hasAnyRole("MERCHANT_VERIFIED", "")
+                        .hasAnyRole("MERCHANT", "MERCHANT_PENDING")
                         .requestMatchers("/api/v1/customers/**")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET,"/api/v1/merchants/me")

@@ -52,9 +52,9 @@ public class MerchantController {
     @PreAuthorize("hasAnyRole('MERCHANT', 'MERCHANT_PENDING', 'MERCHANT_REJECTED')")
     @GetMapping("/me")
     public ResponseEntity<MerchantResponse> getMyMerchant(
-            @AuthenticationPrincipal Jwt principal
+            @AuthenticationPrincipal Jwt jwt
     ) {
-        return ResponseEntity.ok(merchantMapper.toResponse(merchantService.getMe(principal)));
+        return ResponseEntity.ok(merchantMapper.toResponse(merchantService.getMe(jwt)));
 
     }
 

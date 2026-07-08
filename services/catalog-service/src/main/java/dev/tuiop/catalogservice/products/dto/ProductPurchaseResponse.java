@@ -1,11 +1,9 @@
-package dev.tuiop.orderservice.products;
-
-
+package dev.tuiop.catalogservice.products.dto;
 
 import java.time.Instant;
 import java.util.UUID;
 
-public record ProductResponse(
+public record ProductPurchaseResponse(
         UUID id,
         UUID merchantId,
         String merchantName,

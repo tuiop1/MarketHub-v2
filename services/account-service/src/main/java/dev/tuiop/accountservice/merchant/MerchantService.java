@@ -29,8 +29,8 @@ public class MerchantService {
 
 
     @Transactional(readOnly = true)
-    public Merchant getMe(Jwt principal){
-       return getByKeycloakUserId(principal.getSubject());
+    public Merchant getMe(Jwt jwt){
+       return getByKeycloakUserId(jwt.getSubject());
     }
 
     @Transactional(readOnly = true)

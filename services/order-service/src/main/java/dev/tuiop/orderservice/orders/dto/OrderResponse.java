@@ -1,7 +1,7 @@
 package dev.tuiop.orderservice.orders.dto;
 
-import com.tuiop.markethub.orders.enums.OrderStatus;
-import com.tuiop.markethub.orders.enums.PaymentStatus;
+import dev.tuiop.orderservice.orders.enums.OrderStatus;
+import dev.tuiop.orderservice.orders.enums.PaymentStatus;
 
 import java.time.Instant;
 import java.util.List;

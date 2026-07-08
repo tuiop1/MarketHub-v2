@@ -2,6 +2,12 @@ spring:
   application:
     name: order-service
 
+  http:
+    clients:
+      connect-timeout: 2s
+      read-timeout: 5s
+
+
   security:
     oauth2:
       resourceserver:
@@ -23,3 +29,9 @@ spring:
 
 server:
   port: 8083
+
+services:
+  account:
+    url: ${ACCOUNT_SERVICE_URL:http://localhost:8081}
+  catalog:
+    url: ${CATALOG_SERVICE_URL:http://localhost:8082}

@@ -1,31 +1,31 @@
 package dev.tuiop.orderservice.orders;
 
 
-import com.tuiop.markethub.carts.cart.Cart;
-import com.tuiop.markethub.carts.cart.CartRepository;
-import com.tuiop.markethub.carts.cart.item.CartItem;
-import com.tuiop.markethub.carts.exceptions.EmptyCartException;
-import com.tuiop.markethub.common.exceptions.ResourceNotFoundException;
-import com.tuiop.markethub.orders.dto.OrderResponse;
-import com.tuiop.markethub.orders.dto.PurchaseItemRequest;
-import com.tuiop.markethub.orders.dto.PurchaseRequest;
-import com.tuiop.markethub.orders.enums.OrderStatus;
-import com.tuiop.markethub.orders.enums.PaymentStatus;
-import com.tuiop.markethub.orders.mapper.OrderMapper;
-import com.tuiop.markethub.products.Product;
-import com.tuiop.markethub.products.ProductRepository;
-import com.tuiop.markethub.security.user.CustomUserDetails;
-import com.tuiop.markethub.users.User;
-import com.tuiop.markethub.users.UserRepository;
-import dev.tuiop.orderservice.orders.exceptions.OwnProductPurchaseException;
+import dev.tuiop.orderservice.common.exceptions.ResourceNotFoundException;
+import dev.tuiop.orderservice.customers.AccountCustomerClient;
+import dev.tuiop.orderservice.customers.CustomerResponse;
+import dev.tuiop.orderservice.customers.exceptions.AccountServiceException;
+import dev.tuiop.orderservice.orders.dto.OrderResponse;
+import dev.tuiop.orderservice.orders.dto.PurchaseItemRequest;
+import dev.tuiop.orderservice.orders.dto.PurchaseRequest;
+import dev.tuiop.orderservice.orders.enums.OrderStatus;
+import dev.tuiop.orderservice.orders.enums.PaymentStatus;
+import dev.tuiop.orderservice.orders.mapper.OrderMapper;
+import dev.tuiop.orderservice.products.CatalogProductClient;
+import dev.tuiop.orderservice.products.ProductResponse;
+import dev.tuiop.orderservice.products.ProductStockDecreaseRequest;
+import dev.tuiop.orderservice.products.exceptions.CatalogServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -41,83 +41,71 @@ import java.util.stream.Collectors;
 public class OrderService {
 
     private final OrderRepository orderRepository;
-    private final ProductRepository productRepository;
-    private final UserRepository userRepository;
     private final OrderMapper orderMapper;
-    private final CartRepository cartRepository;
+    private final AccountCustomerClient accountCustomerClient;
+    private final CatalogProductClient catalogProductClient;
 
     @Transactional
-    @CacheEvict(value = "public-product", allEntries = true)
     public OrderResponse purchase(
-            CustomUserDetails principal,
+            Jwt jwt,
             PurchaseRequest request
     ) {
-       return orderMapper.toOrderResponse(createOrder(principal, mergeQuantitiesByProductId(request.items())));
+       return orderMapper.toOrderResponse(createOrder(jwt, mergeQuantitiesByProductId(request.items())));
 
     }
-    @Transactional
-    @CacheEvict(value = "public-product", allEntries = true)
-    public OrderResponse purchaseMyCart(
-            CustomUserDetails principal
-    ) {
-        UUID userId = principal.getUserId();
-
-        Cart myCart = cartRepository.findDetailedByUserIdForUpdate(userId).orElseThrow(() -> new ResourceNotFoundException(Cart.class, "user.id",userId));
-
-            if(myCart.getCartItems().isEmpty()){
-                throw new EmptyCartException();
-            }
-
-        Map<UUID, Integer> quantitiesByProductId = myCart.getCartItems().stream().collect(Collectors.toMap(
-                userItem -> userItem.getProduct().getId(),
-                CartItem::getQuantity
-        ));
-
-        Order order = createOrder(principal, quantitiesByProductId);
-
-        myCart.getCartItems().clear();
-
-        return orderMapper.toOrderResponse(order);
-
-    }
+//    @Transactional
+//    public OrderResponse purchaseMyCart(
+//            Jwt jwt
+//    ) {
+//        UUID userId = jwt.getUserId();
+//
+//        Cart myCart = cartRepository.findDetailedByUserIdForUpdate(userId).orElseThrow(() -> new ResourceNotFoundException(Cart.class, "user.id",userId));
+//
+//            if(myCart.getCartItems().isEmpty()){
+//                throw new EmptyCartException();
+//            }
+//
+//        Map<UUID, Integer> quantitiesByProductId = myCart.getCartItems().stream().collect(Collectors.toMap(
+//                userItem -> userItem.getProduct().getId(),
+//                CartItem::getQuantity
+//        ));
+//
+//        Order order = createOrder(jwt, quantitiesByProductId);
+//
+//        myCart.getCartItems().clear();
+//
+//        return orderMapper.toOrderResponse(order);
+//
+//    }
 
     private Order createOrder(
-            CustomUserDetails principal,
+            Jwt jwt,
             Map<UUID, Integer> quantitiesByProductId
     ) {
-        User user = userRepository.findById(principal.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException(User.class, principal.getUserId()));
+        String keycloakId = jwt.getSubject();;
+        CustomerResponse customer = getCustomerByKeycloakUserId(keycloakId);
         //merge quantities to avoid duplicated order items
 
         log.info(
-                "Purchase requested: userId={}, uniqueProductCount={}, totalRequestedItems={}",
-                user.getId(),
+                "Purchase requested: customerId={}, uniqueProductCount={}, totalRequestedItems={}",
+                customer.id(),
                 quantitiesByProductId.size(),
                 quantitiesByProductId.values().stream().mapToInt(Integer::intValue).sum()
         );
-        Collection<UUID> productIds = quantitiesByProductId.keySet();
-
-        Map<UUID, Product> productsById = productRepository.findBuyableByIdsForUpdate(productIds)
+        Map<UUID, ProductResponse> productsById = decreaseStock(quantitiesByProductId)
                 .stream()
-                .collect(Collectors.toMap(Product::getId, Function.identity()));
-
-        //check if all requested products can be purchased
-        validateAllProductsFound(productIds, productsById);
+                .collect(Collectors.toMap(ProductResponse::id, Function.identity()));
 
         Order order = Order.builder()
-                .user(user)
+                .customerId(customer.id())
                 .status(OrderStatus.CREATED)
                 .paymentStatus(PaymentStatus.PENDING)
                 .totalPriceCents(0L)
                 .build();
 
         for (Map.Entry<UUID, Integer> entry : quantitiesByProductId.entrySet()) {
-            Product product = productsById.get(entry.getKey());
+            ProductResponse product = productsById.get(entry.getKey());
             int quantity = entry.getValue();
-
-            validateUserDoesNotBuyOwnProduct(product, principal);
-
-            product.decreaseStock(quantity);
 
             OrderItem orderItem = OrderItem.fromProduct(product, quantity);
             order.addItem(orderItem);
@@ -127,9 +115,9 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
         log.info(
-                "Order created: orderId={}, userId={}, itemCount={}, totalPriceCents={}, status={}, paymentStatus={}",
+                "Order created: orderId={}, customerId={}, itemCount={}, totalPriceCents={}, status={}, paymentStatus={}",
                 savedOrder.getId(),
-                user.getId(),
+                customer.id(),
                 savedOrder.getOrderItems().size(),
                 savedOrder.getTotalPriceCents(),
                 savedOrder.getStatus(),
@@ -140,8 +128,12 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public Page<OrderResponse> getMyOrders(CustomUserDetails principal, Pageable pageable) {
-        return orderRepository.findByUserId(principal.getUserId(), pageable)
+    public Page<OrderResponse> getMyOrders(Jwt jwt, Pageable pageable) {
+
+        CustomerResponse customerResponse = getCustomerByKeycloakUserId(jwt.getSubject());
+
+
+        return orderRepository.findByCustomerId(customerResponse.id(), pageable)
                 .map(orderMapper::toOrderResponse);
     }
 
@@ -167,7 +159,7 @@ public class OrderService {
 
     private void validateAllProductsFound(
             Collection<UUID> requestedProductIds,
-            Map<UUID, Product> productsById
+            Map<UUID, ProductResponse> productsById
     ) {
         for (UUID requestedProductId : requestedProductIds) {
             if (!productsById.containsKey(requestedProductId)) {
@@ -176,18 +168,59 @@ public class OrderService {
                         requestedProductId
                 );
 
-                throw new ResourceNotFoundException(Product.class, requestedProductId);
+                throw new ResourceNotFoundException(ProductResponse.class, requestedProductId);
             }
         }
     }
 
 
-    private void validateUserDoesNotBuyOwnProduct(
-            Product product,
-            CustomUserDetails principal
-    ) {
-        if (product.getMerchant().getUser().getId().equals(principal.getUserId())) {
-            throw new OwnProductPurchaseException("You cannot purchase your own product");
+    private Collection<ProductResponse> decreaseStock(Map<UUID, Integer> quantitiesByProductId) {
+        Collection<ProductStockDecreaseRequest> requests = quantitiesByProductId.entrySet()
+                .stream()
+                .map(entry -> new ProductStockDecreaseRequest(entry.getKey(), entry.getValue()))
+                .toList();
+
+        try {
+            Collection<ProductResponse> products = catalogProductClient.decreaseStock(requests);
+            Map<UUID, ProductResponse> productsById = products.stream()
+                    .collect(Collectors.toMap(ProductResponse::id, Function.identity()));
+
+            validateAllProductsFound(quantitiesByProductId.keySet(), productsById);
+
+            return products;
+        } catch (HttpClientErrorException.NotFound exception) {
+            throw new ResourceNotFoundException(ProductResponse.class, "productIds", quantitiesByProductId.keySet());
+        } catch (HttpClientErrorException.Conflict exception) {
+            log.warn("Catalog service rejected stock decrease request: productIds={}", quantitiesByProductId.keySet(), exception);
+            throw CatalogServiceException.rejected(exception);
+        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
+            log.warn("Catalog service authorization failed while decreasing stock", exception);
+            throw CatalogServiceException.unauthorized(exception);
+        } catch (ResourceAccessException exception) {
+            log.warn("Catalog service request failed while decreasing stock", exception);
+            throw CatalogServiceException.unavailable(exception);
+        } catch (RestClientException exception) {
+            log.warn("Catalog service client failed while decreasing stock", exception);
+            throw CatalogServiceException.unavailable(exception);
+        }
+    }
+
+
+
+    private CustomerResponse getCustomerByKeycloakUserId(String keycloakId) {
+        try {
+            return accountCustomerClient.getCustomerByKeycloakUserId(keycloakId);
+        } catch (HttpClientErrorException.NotFound exception ){
+            throw new ResourceNotFoundException(CustomerResponse.class, "keycloakId", keycloakId);
+        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
+            log.warn("Account service authorization failed while getting merchant by keycloak id", exception);
+            throw AccountServiceException.unauthorized(exception);
+        } catch (ResourceAccessException exception) {
+            log.warn("Account service request failed while getting merchant by keycloak id", exception);
+            throw AccountServiceException.unavailable(exception);
+        } catch (RestClientException exception) {
+            log.warn("Account service client failed while getting merchant by keycloak id", exception);
+            throw AccountServiceException.unavailable(exception);
         }
     }
 }

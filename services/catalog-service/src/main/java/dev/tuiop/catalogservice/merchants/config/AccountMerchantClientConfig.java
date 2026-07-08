@@ -1,6 +1,6 @@
-package dev.tuiop.catalogservice.client.merchants.config;
+package dev.tuiop.catalogservice.merchants.config;
 
-import dev.tuiop.catalogservice.client.merchants.AccountMerchantClient;
+import dev.tuiop.catalogservice.merchants.AccountMerchantClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,10 +14,11 @@ public class AccountMerchantClientConfig {
 
     @Bean
     public AccountMerchantClient accountMerchantClient(
+            RestClient.Builder restClientBuilder,
             @Value("${services.account.url}") String accountMerchantUrl
     )
     {
-        RestClient restClient = RestClient.builder()
+        RestClient restClient = restClientBuilder
                 .baseUrl(accountMerchantUrl)
                 .build();
 
