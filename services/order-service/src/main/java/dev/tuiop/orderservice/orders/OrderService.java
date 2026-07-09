@@ -84,9 +84,7 @@ public class OrderService {
     ) {
         String keycloakId = jwt.getSubject();;
         CustomerResponse customer = getCustomerByKeycloakUserId(keycloakId);
-        //merge quantities to avoid duplicated order items
-
-        log.info(
+               log.info(
                 "Purchase requested: customerId={}, uniqueProductCount={}, totalRequestedItems={}",
                 customer.id(),
                 quantitiesByProductId.size(),
@@ -148,7 +146,7 @@ public class OrderService {
             if (!quantitiesByProductId.containsKey(id)) {
                 quantitiesByProductId.put(id, quantity);
             } else {
-                quantitiesByProductId.compute(id, (k, previousQuantity) -> previousQuantity + quantity);
+                quantitiesByProductId.put(id, quantitiesByProductId.get(id) +  quantity);
             }
 
         }

@@ -13,6 +13,9 @@ services:
       CATALOG_DB: catalog
       CATALOG_DB_USER: markethub
       CATALOG_DB_PASSWORD: markethub
+      ORDER_DB: orders
+      ORDER_DB_USER: markethub
+      ORDER_DB_PASSWORD: markethub
       KEYCLOAK_DB: keycloak
       KEYCLOAK_DB_USER: keycloak
       KEYCLOAK_DB_PASSWORD: keycloak

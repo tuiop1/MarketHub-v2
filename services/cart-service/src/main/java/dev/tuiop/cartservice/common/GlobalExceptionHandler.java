@@ -1,10 +1,12 @@
-package dev.tuiop.orderservice.common.exceptions;
+package dev.tuiop.cartservice.common;
 
-
+import dev.tuiop.cartservice.common.exceptions.BusinessException;
+import dev.tuiop.cartservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.commonapi.ApiError;
 import dev.tuiop.commonapi.ValidationApiError;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,8 +19,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
-@Slf4j
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiError> handleResourceNotFoundException(
