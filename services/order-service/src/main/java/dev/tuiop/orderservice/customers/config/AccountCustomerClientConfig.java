@@ -13,7 +13,7 @@ public class AccountCustomerClientConfig {
 
 
     @Bean
-    public AccountCustomerClient accountMerchantClient(
+    public AccountCustomerClient accountCustomerClient(
             RestClient.Builder restClientBuilder,
             @Value("${services.account.url}") String accountMerchantUrl
     )

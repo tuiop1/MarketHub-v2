@@ -17,9 +17,9 @@
 
     <module>services/catalog-service</module>
     <module>services/order-service</module>
+    <module>services/cart-service</module>
     <!--
       <module>merchant-service</module>
-      <module>order-service</module>
       -->
   </modules>
 
