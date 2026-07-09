@@ -11,12 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(
-        name = "carts",
-        indexes = {
-                @Index(name = "idx_carts_user_id", columnList = "user_id")
-        }
-)
+@Table(name = "carts")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)

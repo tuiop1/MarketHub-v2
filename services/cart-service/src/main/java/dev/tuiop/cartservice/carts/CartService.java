@@ -4,16 +4,24 @@ package dev.tuiop.cartservice.carts;
 import dev.tuiop.cartservice.carts.dto.AddToCartRequest;
 import dev.tuiop.cartservice.carts.dto.CartItemResponse;
 import dev.tuiop.cartservice.carts.dto.CartResponse;
+import dev.tuiop.cartservice.carts.exceptions.EmptyCartException;
 import dev.tuiop.cartservice.carts.exceptions.InactiveCategoryException;
-import dev.tuiop.cartservice.carts.exceptions.InactiveMerchantException;
 import dev.tuiop.cartservice.carts.exceptions.InactiveProductException;
 import dev.tuiop.cartservice.carts.exceptions.InsufficientStockException;
 import dev.tuiop.cartservice.carts.exceptions.MerchantNotVerifiedException;
+import dev.tuiop.cartservice.carts.exceptions.MerchantPendingVerificationException;
+import dev.tuiop.cartservice.carts.exceptions.RejectedMerchantException;
+import dev.tuiop.cartservice.carts.exceptions.SuspendedMerchantException;
 import dev.tuiop.cartservice.carts.exceptions.UserAlreadyOwnsCartException;
 import dev.tuiop.cartservice.carts.item.CartItem;
 import dev.tuiop.cartservice.carts.item.CartItemRepository;
 import dev.tuiop.cartservice.carts.mapper.CartItemMapper;
 import dev.tuiop.cartservice.carts.mapper.CartMapper;
+import dev.tuiop.cartservice.carts.orders.OrderClient;
+import dev.tuiop.cartservice.carts.orders.OrderResponse;
+import dev.tuiop.cartservice.carts.orders.PurchaseItemRequest;
+import dev.tuiop.cartservice.carts.orders.PurchaseRequest;
+import dev.tuiop.cartservice.carts.orders.exceptions.OrderServiceException;
 import dev.tuiop.cartservice.categories.CatalogCategoryClient;
 import dev.tuiop.cartservice.categories.CategoryResponse;
 import dev.tuiop.cartservice.common.exceptions.ResourceNotFoundException;
@@ -25,6 +33,7 @@ import dev.tuiop.cartservice.merchants.MerchantResponse;
 import dev.tuiop.cartservice.merchants.MerchantStatus;
 import dev.tuiop.cartservice.products.CatalogProductClient;
 import dev.tuiop.cartservice.products.ProductResponse;
+import dev.tuiop.cartservice.products.exceptions.CatalogServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -53,6 +62,7 @@ public class CartService {
     private final CatalogProductClient catalogProductClient;
     private final AccountMerchantClient accountMerchantClient;
     private final CatalogCategoryClient catalogCategoryClient;
+    private final OrderClient orderClient;
 
 
     private Cart createMyCart(Jwt jwt) {
@@ -103,6 +113,27 @@ public class CartService {
 
     }
 
+    @Transactional
+    public OrderResponse purchaseMyCart(Jwt jwt) {
+        CustomerResponse customer = getCustomerByKeycloakUserId(jwt.getSubject());
+
+        Cart cart = cartRepository.findByCustomerIdForUpdate(customer.id())
+                .orElseThrow(() -> new ResourceNotFoundException(Cart.class, "customerId", customer.id()));
+
+        if (cart.getCartItems().isEmpty()) {
+            throw new EmptyCartException();
+        }
+
+        PurchaseRequest request = new PurchaseRequest(cart.getCartItems().stream()
+                .map(item -> new PurchaseItemRequest(item.getProductId(), item.getQuantity()))
+                .toList());
+
+        OrderResponse order = purchaseOrder(jwt, request);
+        cart.getCartItems().clear();
+
+        return order;
+    }
+
 
 
     // private method not for controller
@@ -111,10 +142,10 @@ public class CartService {
         CustomerResponse customer = getCustomerByKeycloakUserId(jwt.getSubject());
 
 
-        ProductResponse product = catalogProductClient.getProductById(productId);
+        ProductResponse product = getProductById(productId);
 
-        CategoryResponse category = catalogCategoryClient.getCategoryById(product.categoryId());
-        MerchantResponse merchant = accountMerchantClient.getMerchantById(product.merchantId());
+        CategoryResponse category = getCategoryById(product.categoryId());
+        MerchantResponse merchant = getMerchantById(product.merchantId());
 
 
         if (!Boolean.TRUE.equals(category.active())) {
@@ -122,16 +153,10 @@ public class CartService {
             throw new InactiveCategoryException(category.name());
         }
 
-        if (MerchantStatus.SUSPENDED.equals(merchant.status()) || MerchantStatus.REJECTED.equals(merchant.status())) {
-            throw new InactiveMerchantException(merchant.shopName());
-        }
+        validateMerchantCanSell(merchant);
 
         if (!Boolean.TRUE.equals(product.active())) {
             throw new InactiveProductException(product.name());
-        }
-
-        if (!MerchantStatus.VERIFIED.equals(merchant.status())) {
-            throw new MerchantNotVerifiedException();
         }
 
         if (quantity == null || quantity < 1) {
@@ -210,6 +235,89 @@ public class CartService {
         } catch (RestClientException exception) {
             log.warn("Account service client failed while getting merchant by keycloak id", exception);
             throw AccountServiceException.unavailable(exception);
+        }
+    }
+
+    private ProductResponse getProductById(UUID productId) {
+        try {
+            return catalogProductClient.getProductById(productId);
+        } catch (HttpClientErrorException.NotFound exception) {
+            throw new ResourceNotFoundException(ProductResponse.class, productId);
+        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
+            log.warn("Catalog service authorization failed while getting product by id", exception);
+            throw CatalogServiceException.unauthorized(exception);
+        } catch (ResourceAccessException exception) {
+            log.warn("Catalog service request failed while getting product by id", exception);
+            throw CatalogServiceException.unavailable(exception);
+        } catch (RestClientException exception) {
+            log.warn("Catalog service client failed while getting product by id", exception);
+            throw CatalogServiceException.unavailable(exception);
+        }
+    }
+
+    private CategoryResponse getCategoryById(UUID categoryId) {
+        try {
+            return catalogCategoryClient.getCategoryById(categoryId);
+        } catch (HttpClientErrorException.NotFound exception) {
+            throw new ResourceNotFoundException(CategoryResponse.class, categoryId);
+        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
+            log.warn("Catalog service authorization failed while getting category by id", exception);
+            throw CatalogServiceException.unauthorized(exception);
+        } catch (ResourceAccessException exception) {
+            log.warn("Catalog service request failed while getting category by id", exception);
+            throw CatalogServiceException.unavailable(exception);
+        } catch (RestClientException exception) {
+            log.warn("Catalog service client failed while getting category by id", exception);
+            throw CatalogServiceException.unavailable(exception);
+        }
+    }
+
+    private MerchantResponse getMerchantById(UUID merchantId) {
+        try {
+            return accountMerchantClient.getMerchantById(merchantId);
+        } catch (HttpClientErrorException.NotFound exception) {
+            throw new ResourceNotFoundException(MerchantResponse.class, merchantId);
+        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
+            log.warn("Account service authorization failed while getting merchant by id", exception);
+            throw AccountServiceException.unauthorized(exception);
+        } catch (ResourceAccessException exception) {
+            log.warn("Account service request failed while getting merchant by id", exception);
+            throw AccountServiceException.unavailable(exception);
+        } catch (RestClientException exception) {
+            log.warn("Account service client failed while getting merchant by id", exception);
+            throw AccountServiceException.unavailable(exception);
+        }
+    }
+
+    private void validateMerchantCanSell(MerchantResponse merchant) {
+        if (merchant.status() == null) {
+            throw new MerchantNotVerifiedException(merchant.shopName());
+        }
+
+        switch (merchant.status()) {
+            case VERIFIED -> {
+            }
+            case PENDING -> throw new MerchantPendingVerificationException(merchant.shopName());
+            case REJECTED -> throw new RejectedMerchantException(merchant.shopName());
+            case SUSPENDED -> throw new SuspendedMerchantException(merchant.shopName());
+        }
+    }
+
+    private OrderResponse purchaseOrder(Jwt jwt, PurchaseRequest request) {
+        try {
+            return orderClient.purchase("Bearer " + jwt.getTokenValue(), request);
+        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
+            log.warn("Order service authorization failed while purchasing cart", exception);
+            throw OrderServiceException.unauthorized(exception);
+        } catch (HttpClientErrorException exception) {
+            log.warn("Order service rejected cart purchase", exception);
+            throw OrderServiceException.rejected(exception);
+        } catch (ResourceAccessException exception) {
+            log.warn("Order service request failed while purchasing cart", exception);
+            throw OrderServiceException.unavailable(exception);
+        } catch (RestClientException exception) {
+            log.warn("Order service client failed while purchasing cart", exception);
+            throw OrderServiceException.unavailable(exception);
         }
     }
 }

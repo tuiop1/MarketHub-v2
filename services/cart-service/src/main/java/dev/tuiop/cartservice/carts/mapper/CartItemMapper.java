@@ -11,10 +11,6 @@ public interface CartItemMapper {
 
 
     @Mapping(target = "cartId", source = "cart.id")
-    @Mapping(target = "productName", ignore = true)
-    @Mapping(target = "priceCents", ignore = true)
-    @Mapping(target = "productActive", ignore = true)
-    @Mapping(target = "stockQuantity", ignore = true)
-    @Mapping(target = "totalPriceCents", ignore = true)
+
     CartItemResponse toCartItemResponse(CartItem cartItem);
 }

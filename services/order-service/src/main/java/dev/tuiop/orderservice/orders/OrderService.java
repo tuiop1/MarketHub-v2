@@ -53,30 +53,30 @@ public class OrderService {
        return orderMapper.toOrderResponse(createOrder(jwt, mergeQuantitiesByProductId(request.items())));
 
     }
-//    @Transactional
-//    public OrderResponse purchaseMyCart(
-//            Jwt jwt
-//    ) {
-//        UUID userId = jwt.getUserId();
-//
-//        Cart myCart = cartRepository.findDetailedByUserIdForUpdate(userId).orElseThrow(() -> new ResourceNotFoundException(Cart.class, "user.id",userId));
-//
-//            if(myCart.getCartItems().isEmpty()){
-//                throw new EmptyCartException();
-//            }
-//
-//        Map<UUID, Integer> quantitiesByProductId = myCart.getCartItems().stream().collect(Collectors.toMap(
-//                userItem -> userItem.getProduct().getId(),
-//                CartItem::getQuantity
-//        ));
-//
-//        Order order = createOrder(jwt, quantitiesByProductId);
-//
-//        myCart.getCartItems().clear();
-//
-//        return orderMapper.toOrderResponse(order);
-//
-//    }
+    @Transactional
+    public OrderResponse purchaseMyCart(
+            Jwt jwt
+    ) {
+        UUID userId = jwt.getUserId();
+
+        Cart myCart = cartRepository.findDetailedByUserIdForUpdate(userId).orElseThrow(() -> new ResourceNotFoundException(Cart.class, "user.id",userId));
+
+            if(myCart.getCartItems().isEmpty()){
+                throw new EmptyCartException();
+            }
+
+        Map<UUID, Integer> quantitiesByProductId = myCart.getCartItems().stream().collect(Collectors.toMap(
+                userItem -> userItem.getProduct().getId(),
+                CartItem::getQuantity
+        ));
+
+        Order order = createOrder(jwt, quantitiesByProductId);
+
+        myCart.getCartItems().clear();
+
+        return orderMapper.toOrderResponse(order);
+
+    }
 
     private Order createOrder(
             Jwt jwt,
