@@ -1,6 +1,10 @@
 package dev.tuiop.orderservice.orders;
 
 
+import dev.tuiop.orderservice.carts.CartServiceClient;
+import dev.tuiop.orderservice.carts.dto.CartItemResponse;
+import dev.tuiop.orderservice.carts.dto.CartResponse;
+import dev.tuiop.orderservice.carts.exceptions.CartServiceException;
 import dev.tuiop.orderservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.orderservice.customers.AccountCustomerClient;
 import dev.tuiop.orderservice.customers.CustomerResponse;
@@ -10,6 +14,7 @@ import dev.tuiop.orderservice.orders.dto.PurchaseItemRequest;
 import dev.tuiop.orderservice.orders.dto.PurchaseRequest;
 import dev.tuiop.orderservice.orders.enums.OrderStatus;
 import dev.tuiop.orderservice.orders.enums.PaymentStatus;
+import dev.tuiop.orderservice.orders.exceptions.EmptyCartException;
 import dev.tuiop.orderservice.orders.mapper.OrderMapper;
 import dev.tuiop.orderservice.products.CatalogProductClient;
 import dev.tuiop.orderservice.products.ProductResponse;
@@ -44,6 +49,7 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final AccountCustomerClient accountCustomerClient;
     private final CatalogProductClient catalogProductClient;
+    private final CartServiceClient cartServiceClient;
 
     @Transactional
     public OrderResponse purchase(
@@ -53,26 +59,27 @@ public class OrderService {
        return orderMapper.toOrderResponse(createOrder(jwt, mergeQuantitiesByProductId(request.items())));
 
     }
+
     @Transactional
     public OrderResponse purchaseMyCart(
             Jwt jwt
     ) {
-        UUID userId = jwt.getUserId();
+        getMe(jwt);
 
-        Cart myCart = cartRepository.findDetailedByUserIdForUpdate(userId).orElseThrow(() -> new ResourceNotFoundException(Cart.class, "user.id",userId));
+        CartResponse myCart = getMyCart(jwt);
 
-            if(myCart.getCartItems().isEmpty()){
-                throw new EmptyCartException();
-            }
+        if (myCart.cartItems().isEmpty()) {
+            throw new EmptyCartException();
+        }
 
-        Map<UUID, Integer> quantitiesByProductId = myCart.getCartItems().stream().collect(Collectors.toMap(
-                userItem -> userItem.getProduct().getId(),
-                CartItem::getQuantity
+        Map<UUID, Integer> quantitiesByProductId = myCart.cartItems().stream().collect(Collectors.toMap(
+                customerItem -> customerItem.productId(),
+                CartItemResponse::quantity
         ));
 
         Order order = createOrder(jwt, quantitiesByProductId);
 
-        myCart.getCartItems().clear();
+        clearMyCart(jwt);
 
         return orderMapper.toOrderResponse(order);
 
@@ -82,9 +89,8 @@ public class OrderService {
             Jwt jwt,
             Map<UUID, Integer> quantitiesByProductId
     ) {
-        String keycloakId = jwt.getSubject();;
-        CustomerResponse customer = getCustomerByKeycloakUserId(keycloakId);
-               log.info(
+        CustomerResponse customer = getMe(jwt);
+        log.info(
                 "Purchase requested: customerId={}, uniqueProductCount={}, totalRequestedItems={}",
                 customer.id(),
                 quantitiesByProductId.size(),
@@ -128,7 +134,7 @@ public class OrderService {
     @Transactional(readOnly = true)
     public Page<OrderResponse> getMyOrders(Jwt jwt, Pageable pageable) {
 
-        CustomerResponse customerResponse = getCustomerByKeycloakUserId(jwt.getSubject());
+        CustomerResponse customerResponse = getMe(jwt);
 
 
         return orderRepository.findByCustomerId(customerResponse.id(), pageable)
@@ -203,21 +209,62 @@ public class OrderService {
         }
     }
 
-
-
-    private CustomerResponse getCustomerByKeycloakUserId(String keycloakId) {
+    private CartResponse getMyCart(Jwt jwt) {
         try {
-            return accountCustomerClient.getCustomerByKeycloakUserId(keycloakId);
-        } catch (HttpClientErrorException.NotFound exception ){
-            throw new ResourceNotFoundException(CustomerResponse.class, "keycloakId", keycloakId);
+            return cartServiceClient.getMyCart(authorizationHeader(jwt));
+        } catch (HttpClientErrorException.NotFound exception) {
+            throw new ResourceNotFoundException(CartResponse.class, "customer", "current");
         } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
-            log.warn("Account service authorization failed while getting merchant by keycloak id", exception);
+            log.warn("Cart service authorization failed while getting my cart", exception);
+            throw CartServiceException.unauthorized(exception);
+        } catch (ResourceAccessException exception) {
+            log.warn("Cart service request failed while getting my cart", exception);
+            throw CartServiceException.unavailable(exception);
+        } catch (RestClientException exception) {
+            log.warn("Cart service client failed while getting my cart", exception);
+            throw CartServiceException.unavailable(exception);
+        }
+    }
+
+    private void clearMyCart(Jwt jwt) {
+        try {
+            cartServiceClient.clearMyCart(authorizationHeader(jwt));
+        } catch (HttpClientErrorException.NotFound exception) {
+            throw new ResourceNotFoundException(CartResponse.class, "customer", "current");
+        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
+            log.warn("Cart service authorization failed while clearing my cart", exception);
+            throw CartServiceException.unauthorized(exception);
+        } catch (HttpClientErrorException exception) {
+            log.warn("Cart service rejected clear cart request", exception);
+            throw CartServiceException.rejected(exception);
+        } catch (ResourceAccessException exception) {
+            log.warn("Cart service request failed while clearing my cart", exception);
+            throw CartServiceException.unavailable(exception);
+        } catch (RestClientException exception) {
+            log.warn("Cart service client failed while clearing my cart", exception);
+            throw CartServiceException.unavailable(exception);
+        }
+    }
+
+    private String authorizationHeader(Jwt jwt) {
+        return "Bearer " + jwt.getTokenValue();
+    }
+
+
+
+    private CustomerResponse getMe(Jwt jwt) {
+        try {
+            return accountCustomerClient.getMe(authorizationHeader(jwt));
+        } catch (HttpClientErrorException.NotFound exception) {
+            throw new ResourceNotFoundException(CustomerResponse.class, "current");
+        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
+            log.warn("Account service authorization failed while getting current customer", exception);
             throw AccountServiceException.unauthorized(exception);
         } catch (ResourceAccessException exception) {
-            log.warn("Account service request failed while getting merchant by keycloak id", exception);
+            log.warn("Account service request failed while getting current customer", exception);
             throw AccountServiceException.unavailable(exception);
         } catch (RestClientException exception) {
-            log.warn("Account service client failed while getting merchant by keycloak id", exception);
+            log.warn("Account service client failed while getting current customer", exception);
             throw AccountServiceException.unavailable(exception);
         }
     }

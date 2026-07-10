@@ -26,7 +26,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(apiAccessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/cart/**").hasRole("CUSTOMER")
+                        .requestMatchers("/api/v1/carts/**").hasRole("CUSTOMER")
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2

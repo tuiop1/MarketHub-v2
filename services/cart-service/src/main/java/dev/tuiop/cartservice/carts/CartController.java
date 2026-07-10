@@ -4,7 +4,6 @@ package dev.tuiop.cartservice.carts;
 import dev.tuiop.cartservice.carts.dto.AddToCartRequest;
 import dev.tuiop.cartservice.carts.dto.CartItemResponse;
 import dev.tuiop.cartservice.carts.dto.CartResponse;
-import dev.tuiop.cartservice.carts.orders.OrderResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
-@RequestMapping("/api/v1/cart")
+@RequestMapping("/api/v1/carts")
 @RestController
 @RequiredArgsConstructor
 public class CartController {
@@ -47,10 +46,15 @@ public class CartController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/purchase")
-    public ResponseEntity<OrderResponse> purchaseMyCart(@AuthenticationPrincipal Jwt jwt){
-        return ResponseEntity.status(HttpStatus.CREATED).body(cartService.purchaseMyCart(jwt));
+    @DeleteMapping("/items")
+    public ResponseEntity<Void> clearMyCart(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        cartService.clearMyCart(jwt);
+        return ResponseEntity.noContent().build();
     }
+
+
 
 
 }

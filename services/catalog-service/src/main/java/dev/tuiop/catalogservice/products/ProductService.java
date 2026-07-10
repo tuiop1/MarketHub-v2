@@ -155,6 +155,7 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public Page<ProductResponse> getPublicProducts(Pageable pageable) {
+
         return productRepository.findByActiveTrueAndCategoryActiveTrue(pageable)
                 .map(productMapper::toResponse);
     }

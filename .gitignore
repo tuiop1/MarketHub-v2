@@ -35,5 +35,8 @@ build/
 ### VS Code ###
 .vscode/
 
+### Local Keycloak exports ###
+docker/keycloak/import/*.json
+
 ### Mac OS ###
 .DS_Store

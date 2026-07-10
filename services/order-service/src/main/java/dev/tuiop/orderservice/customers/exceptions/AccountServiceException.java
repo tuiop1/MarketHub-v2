@@ -21,7 +21,7 @@ public class AccountServiceException extends BusinessException {
     public static AccountServiceException unauthorized(Throwable cause) {
         return new AccountServiceException(
                 "ACCOUNT_SERVICE_AUTHORIZATION_FAILED",
-                "Catalog service is not authorized to call account service",
+                "Order service is not authorized to call account service",
                 503,
                 cause
         );

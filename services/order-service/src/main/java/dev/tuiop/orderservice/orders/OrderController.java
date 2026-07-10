@@ -29,6 +29,13 @@ public class OrderController {
         return ResponseEntity.status(201).body(orderService.purchase(jwt, request));
     }
 
+    @PostMapping("/my-cart/purchase")
+    public ResponseEntity<OrderResponse> purchaseMyCart(
+            @AuthenticationPrincipal Jwt jwt
+    ) {
+        return ResponseEntity.status(201).body(orderService.purchaseMyCart(jwt));
+    }
+
     @GetMapping("/me")
     public Page<OrderResponse> getMyOrders(
             @AuthenticationPrincipal Jwt jwt,

@@ -42,7 +42,7 @@ public class ProductController {
 
     @PostMapping("/purchase/stock/decrease")
     public ResponseEntity<List<ProductPurchaseResponse>> decreaseStockForPurchase(
-            @Valid @RequestBody Collection<ProductStockDecreaseRequest> requests
+            @Valid @RequestBody Collection<@Valid ProductStockDecreaseRequest> requests
     ) {
         return ResponseEntity.ok(productService.decreaseStock(requests));
     }

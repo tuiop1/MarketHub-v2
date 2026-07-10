@@ -30,7 +30,6 @@ import dev.tuiop.cartservice.customers.CustomerResponse;
 import dev.tuiop.cartservice.customers.exceptions.AccountServiceException;
 import dev.tuiop.cartservice.merchants.AccountMerchantClient;
 import dev.tuiop.cartservice.merchants.MerchantResponse;
-import dev.tuiop.cartservice.merchants.MerchantStatus;
 import dev.tuiop.cartservice.products.CatalogProductClient;
 import dev.tuiop.cartservice.products.ProductResponse;
 import dev.tuiop.cartservice.products.exceptions.CatalogServiceException;
@@ -44,8 +43,9 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -67,7 +67,7 @@ public class CartService {
 
     private Cart createMyCart(Jwt jwt) {
 
-        CustomerResponse customer = getCustomerByKeycloakUserId(jwt.getSubject());
+        CustomerResponse customer = getMe(jwt);
 
 
 
@@ -90,11 +90,11 @@ public class CartService {
 
     @Transactional(readOnly = true)
     public CartResponse getMyCart(Jwt jwt) {
-        CustomerResponse me = getCustomerByKeycloakUserId(jwt.getSubject());
+        CustomerResponse me = getMe(jwt);
 
         Cart myCart = cartRepository.findCartByCustomerId(me.id()).orElseThrow(() -> new ResourceNotFoundException(Cart.class, "customerId", me.id()));
 
-        return cartMapper.toCartResponse(myCart);
+        return toCartResponse(myCart);
     }
 
 
@@ -102,7 +102,10 @@ public class CartService {
     @Transactional
     public CartItemResponse addProductToMyCart(AddToCartRequest request, Jwt jwt) {
 
-        return cartItemMapper.toCartItemResponse(addProductToCart(request.productId(), request.quantity(), jwt));
+        CartItem cartItem = addProductToCart(request.productId(), request.quantity(), jwt);
+        ProductResponse product = getProductById(cartItem.getProductId());
+
+        return cartItemMapper.toCartItemResponse(cartItem, product);
     }
 
     @Transactional
@@ -114,8 +117,20 @@ public class CartService {
     }
 
     @Transactional
+    public void clearMyCart(Jwt jwt) {
+        CustomerResponse customer = getMe(jwt);
+
+        Cart cart = cartRepository.findByCustomerIdForUpdate(customer.id())
+                .orElseThrow(() -> new ResourceNotFoundException(Cart.class, "customerId", customer.id()));
+
+        cart.getCartItems().clear();
+
+        log.info("Cleared cart id={} for customerId={}", cart.getId(), customer.id());
+    }
+
+    @Transactional
     public OrderResponse purchaseMyCart(Jwt jwt) {
-        CustomerResponse customer = getCustomerByKeycloakUserId(jwt.getSubject());
+        CustomerResponse customer = getMe(jwt);
 
         Cart cart = cartRepository.findByCustomerIdForUpdate(customer.id())
                 .orElseThrow(() -> new ResourceNotFoundException(Cart.class, "customerId", customer.id()));
@@ -134,12 +149,26 @@ public class CartService {
         return order;
     }
 
+    private CartResponse toCartResponse(Cart cart) {
+        List<UUID> productIds = new ArrayList<>();
+        cart.getCartItems().forEach(cartItem -> productIds.add(cartItem.getProductId()));
+        List<ProductResponse> productsReturned = catalogProductClient.getBuyableProductsByIds(productIds);
+        Map<UUID, ProductResponse> products = productsReturned.stream().collect(Collectors.toMap((productResponse -> productResponse.id()), Function.identity()));
+
+        List<CartItemResponse> cartItems = cart.getCartItems()
+                .stream()
+                .map(item -> cartItemMapper.toCartItemResponse(item, products.get(item.getProductId()) ))
+                .toList();
+
+        return cartMapper.toCartResponse(cart, cartItems);
+    }
+
 
 
     // private method not for controller
     private CartItem addProductToCart(UUID productId, Integer quantity, Jwt jwt) {
 
-        CustomerResponse customer = getCustomerByKeycloakUserId(jwt.getSubject());
+        CustomerResponse customer = getMe(jwt);
 
 
         ProductResponse product = getProductById(productId);
@@ -203,7 +232,7 @@ public class CartService {
 
     private void removeCartItemFromCart(UUID cartItemId, Jwt jwt) {
 
-        CustomerResponse customer = getCustomerByKeycloakUserId(jwt.getSubject());
+        CustomerResponse customer = getMe(jwt);
 
 
         Cart cart = cartRepository.findByCustomerId(customer.id()).orElseThrow(() -> new ResourceNotFoundException(Cart.class, "customerId", customer.id()));
@@ -221,21 +250,25 @@ public class CartService {
     }
 
 
-    private CustomerResponse getCustomerByKeycloakUserId(String keycloakId) {
+    private CustomerResponse getMe(Jwt jwt) {
         try {
-            return accountCustomerClient.getCustomerByKeycloakUserId(keycloakId);
+            return accountCustomerClient.getMe(authorizationHeader(jwt));
         } catch (HttpClientErrorException.NotFound exception ){
-            throw new ResourceNotFoundException(CustomerResponse.class, "keycloakId", keycloakId);
+            throw new ResourceNotFoundException(CustomerResponse.class, "current");
         } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
-            log.warn("Account service authorization failed while getting merchant by keycloak id", exception);
+            log.warn("Account service authorization failed while getting current customer", exception);
             throw AccountServiceException.unauthorized(exception);
         } catch (ResourceAccessException exception) {
-            log.warn("Account service request failed while getting merchant by keycloak id", exception);
+            log.warn("Account service request failed while getting current customer", exception);
             throw AccountServiceException.unavailable(exception);
         } catch (RestClientException exception) {
-            log.warn("Account service client failed while getting merchant by keycloak id", exception);
+            log.warn("Account service client failed while getting current customer", exception);
             throw AccountServiceException.unavailable(exception);
         }
+    }
+
+    private String authorizationHeader(Jwt jwt) {
+        return "Bearer " + jwt.getTokenValue();
     }
 
     private ProductResponse getProductById(UUID productId) {
