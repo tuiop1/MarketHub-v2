@@ -182,22 +182,23 @@ public class ProductService {
                 .collect(Collectors.toMap(Product::getId, Function.identity()));
 
         validateAllProductsFound(productIds, productsById);
+        Map<UUID, MerchantResponse> merchantsById = getPublicMerchantsById(productsById.values());
 
         return productsById.values()
                 .stream()
-                .map(this::toPurchaseResponse)
+                .map(product -> toPurchaseResponse(product, merchantsById.get(product.getMerchantId())))
                 .toList();
     }
 
     @Transactional
     public List<ProductPurchaseResponse> decreaseStock(Collection<ProductStockDecreaseRequest> requests) {
         Map<UUID, Integer> quantitiesByProductId = mergeQuantitiesByProductId(requests);
-
         Map<UUID, Product> productsById = productRepository.findBuyableByIdsForUpdate(quantitiesByProductId.keySet())
                 .stream()
                 .collect(Collectors.toMap(Product::getId, Function.identity()));
 
         validateAllProductsFound(quantitiesByProductId.keySet(), productsById);
+        Map<UUID, MerchantResponse> merchantsById = getPublicMerchantsById(productsById.values());
 
         for (Map.Entry<UUID, Integer> entry : quantitiesByProductId.entrySet()) {
             Product product = productsById.get(entry.getKey());
@@ -206,7 +207,7 @@ public class ProductService {
 
         return productsById.values()
                 .stream()
-                .map(this::toPurchaseResponse)
+                .map(product -> toPurchaseResponse(product, merchantsById.get(product.getMerchantId())))
                 .toList();
     }
 
@@ -267,6 +268,42 @@ public class ProductService {
         }
     }
 
+    private Map<UUID, MerchantResponse> getPublicMerchantsById(Collection<Product> products) {
+        if (products.isEmpty()) {
+            return Map.of();
+        }
+
+        List<UUID> merchantIds = products.stream()
+                .map(Product::getMerchantId)
+                .distinct()
+                .toList();
+
+        try {
+            Map<UUID, MerchantResponse> merchantsById = accountMerchantClient.getMerchants(merchantIds)
+                    .stream()
+                    .collect(Collectors.toMap(MerchantResponse::id, Function.identity()));
+
+            for (Product product : products) {
+                if (!merchantsById.containsKey(product.getMerchantId())) {
+                    throw new ResourceNotFoundException(Product.class, product.getId());
+                }
+            }
+
+            return merchantsById;
+        } catch (HttpClientErrorException.NotFound exception) {
+            throw new ResourceNotFoundException(Product.class, products.iterator().next().getId());
+        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
+            log.warn("Account service authorization failed while getting merchants by ids: merchantIds={}", merchantIds, exception);
+            throw AccountServiceException.unauthorized(exception);
+        } catch (ResourceAccessException exception) {
+            log.warn("Account service request failed while getting merchants by ids: merchantIds={}", merchantIds, exception);
+            throw AccountServiceException.unavailable(exception);
+        } catch (RestClientException exception) {
+            log.warn("Account service client failed while getting merchants by ids: merchantIds={}", merchantIds, exception);
+            throw AccountServiceException.unavailable(exception);
+        }
+    }
+
     private Category getCategory(UUID categoryId) {
 
         return categoryRepository.findByIdAndActiveTrue(categoryId)
@@ -294,8 +331,8 @@ public class ProductService {
         }
     }
 
-    private ProductPurchaseResponse toPurchaseResponse(Product product) {
-        MerchantResponse merchant = getPublicMerchant(product.getMerchantId(), product.getId());
+    private ProductPurchaseResponse toPurchaseResponse(Product product, MerchantResponse merchant) {
+
 
         if (merchant.status() != MerchantStatus.VERIFIED) {
             throw new ResourceNotFoundException(Product.class, product.getId());

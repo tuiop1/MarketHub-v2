@@ -22,6 +22,9 @@ public class Cart {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
 
     @Column(name = "customer_id", nullable = false, unique = true)
     private UUID customerId;

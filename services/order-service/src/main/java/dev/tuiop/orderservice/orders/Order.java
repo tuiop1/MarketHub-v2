@@ -32,6 +32,10 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @Column(name = "customer_id",nullable = false, updatable = false)
     private UUID customerId;
 

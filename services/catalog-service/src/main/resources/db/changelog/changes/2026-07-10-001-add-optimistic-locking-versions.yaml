@@ -1,0 +1,38 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2026-07-10-001-add-category-version
+      author: tuiop
+      labels: catalog-service
+      changes:
+        - addColumn:
+            tableName: categories
+            columns:
+              - column:
+                  name: version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: categories
+            columnName: version
+
+  - changeSet:
+      id: 2026-07-10-002-add-product-version
+      author: tuiop
+      labels: catalog-service
+      changes:
+        - addColumn:
+            tableName: products
+            columns:
+              - column:
+                  name: version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: products
+            columnName: version

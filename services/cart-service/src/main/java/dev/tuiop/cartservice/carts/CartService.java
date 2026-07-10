@@ -4,7 +4,6 @@ package dev.tuiop.cartservice.carts;
 import dev.tuiop.cartservice.carts.dto.AddToCartRequest;
 import dev.tuiop.cartservice.carts.dto.CartItemResponse;
 import dev.tuiop.cartservice.carts.dto.CartResponse;
-import dev.tuiop.cartservice.carts.exceptions.EmptyCartException;
 import dev.tuiop.cartservice.carts.exceptions.InactiveCategoryException;
 import dev.tuiop.cartservice.carts.exceptions.InactiveProductException;
 import dev.tuiop.cartservice.carts.exceptions.InsufficientStockException;
@@ -17,11 +16,7 @@ import dev.tuiop.cartservice.carts.item.CartItem;
 import dev.tuiop.cartservice.carts.item.CartItemRepository;
 import dev.tuiop.cartservice.carts.mapper.CartItemMapper;
 import dev.tuiop.cartservice.carts.mapper.CartMapper;
-import dev.tuiop.cartservice.carts.orders.OrderClient;
-import dev.tuiop.cartservice.carts.orders.OrderResponse;
-import dev.tuiop.cartservice.carts.orders.PurchaseItemRequest;
-import dev.tuiop.cartservice.carts.orders.PurchaseRequest;
-import dev.tuiop.cartservice.carts.orders.exceptions.OrderServiceException;
+
 import dev.tuiop.cartservice.categories.CatalogCategoryClient;
 import dev.tuiop.cartservice.categories.CategoryResponse;
 import dev.tuiop.cartservice.common.exceptions.ResourceNotFoundException;
@@ -62,7 +57,6 @@ public class CartService {
     private final CatalogProductClient catalogProductClient;
     private final AccountMerchantClient accountMerchantClient;
     private final CatalogCategoryClient catalogCategoryClient;
-    private final OrderClient orderClient;
 
 
     private Cart createMyCart(Jwt jwt) {
@@ -128,26 +122,7 @@ public class CartService {
         log.info("Cleared cart id={} for customerId={}", cart.getId(), customer.id());
     }
 
-    @Transactional
-    public OrderResponse purchaseMyCart(Jwt jwt) {
-        CustomerResponse customer = getMe(jwt);
 
-        Cart cart = cartRepository.findByCustomerIdForUpdate(customer.id())
-                .orElseThrow(() -> new ResourceNotFoundException(Cart.class, "customerId", customer.id()));
-
-        if (cart.getCartItems().isEmpty()) {
-            throw new EmptyCartException();
-        }
-
-        PurchaseRequest request = new PurchaseRequest(cart.getCartItems().stream()
-                .map(item -> new PurchaseItemRequest(item.getProductId(), item.getQuantity()))
-                .toList());
-
-        OrderResponse order = purchaseOrder(jwt, request);
-        cart.getCartItems().clear();
-
-        return order;
-    }
 
     private CartResponse toCartResponse(Cart cart) {
         List<UUID> productIds = new ArrayList<>();
@@ -336,21 +311,5 @@ public class CartService {
         }
     }
 
-    private OrderResponse purchaseOrder(Jwt jwt, PurchaseRequest request) {
-        try {
-            return orderClient.purchase("Bearer " + jwt.getTokenValue(), request);
-        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
-            log.warn("Order service authorization failed while purchasing cart", exception);
-            throw OrderServiceException.unauthorized(exception);
-        } catch (HttpClientErrorException exception) {
-            log.warn("Order service rejected cart purchase", exception);
-            throw OrderServiceException.rejected(exception);
-        } catch (ResourceAccessException exception) {
-            log.warn("Order service request failed while purchasing cart", exception);
-            throw OrderServiceException.unavailable(exception);
-        } catch (RestClientException exception) {
-            log.warn("Order service client failed while purchasing cart", exception);
-            throw OrderServiceException.unavailable(exception);
-        }
-    }
+
 }

@@ -1,6 +1,7 @@
 package dev.tuiop.cartservice.products;
 
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.service.annotation.GetExchange;
 import org.springframework.web.service.annotation.HttpExchange;
 import org.springframework.web.service.annotation.PostExchange;
@@ -17,6 +18,6 @@ public interface CatalogProductClient {
     ProductResponse getProductById(@PathVariable UUID productId);
 
     @PostExchange("/purchase/buyable")
-    List<ProductResponse> getBuyableProductsByIds(Collection<UUID> ids);
+    List<ProductResponse> getBuyableProductsByIds(@RequestBody Collection<UUID> ids);
 
 }

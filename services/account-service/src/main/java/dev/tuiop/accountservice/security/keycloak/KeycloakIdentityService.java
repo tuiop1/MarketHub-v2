@@ -13,6 +13,7 @@ import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -167,6 +168,7 @@ public class KeycloakIdentityService {
 
         UserRepresentation user = userResource.toRepresentation();
         user.setEnabled(false);
+        user.setNotBefore((int) Instant.now().getEpochSecond());
         userResource.update(user);
 
         userResource.logout();

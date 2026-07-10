@@ -11,6 +11,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 @RequestMapping("/api/v1/merchants")
@@ -28,6 +30,18 @@ public class MerchantController {
     public ResponseEntity<Page<MerchantResponse>> getAllActiveAndVerifiedMerchants(Pageable pageable) {
         Page<MerchantResponse> merchants = merchantService.getAllActiveAndVerifiedMerchants(pageable)
                 .map(merchantMapper::toResponse);
+
+        return ResponseEntity.ok(merchants);
+    }
+
+    @GetMapping("/batch")
+    public ResponseEntity<List<MerchantResponse>> getMerchantsByIds(
+            @RequestParam Collection<UUID> merchantIds
+    ) {
+        List<MerchantResponse> merchants = merchantService.getByIds(merchantIds)
+                .stream()
+                .map(merchantMapper::toResponse)
+                .toList();
 
         return ResponseEntity.ok(merchants);
     }

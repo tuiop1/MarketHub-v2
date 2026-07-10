@@ -16,6 +16,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -47,6 +49,11 @@ public class MerchantService {
                         "keycloakUserId",
                         keycloakUserId
                 ));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Merchant> getByIds(Collection<UUID> merchantIds) {
+        return merchantRepository.findByIdIn(merchantIds);
     }
 
     @Transactional(readOnly = true)

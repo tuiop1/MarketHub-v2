@@ -1,0 +1,38 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2026-07-10-001-add-cart-version
+      author: tuiop
+      labels: cart-service
+      changes:
+        - addColumn:
+            tableName: carts
+            columns:
+              - column:
+                  name: version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: carts
+            columnName: version
+
+  - changeSet:
+      id: 2026-07-10-002-add-cart-item-version
+      author: tuiop
+      labels: cart-service
+      changes:
+        - addColumn:
+            tableName: cart_items
+            columns:
+              - column:
+                  name: version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: cart_items
+            columnName: version
