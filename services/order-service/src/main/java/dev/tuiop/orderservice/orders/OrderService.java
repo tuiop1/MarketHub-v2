@@ -13,7 +13,6 @@ import dev.tuiop.orderservice.orders.dto.OrderResponse;
 import dev.tuiop.orderservice.orders.dto.PurchaseItemRequest;
 import dev.tuiop.orderservice.orders.dto.PurchaseRequest;
 import dev.tuiop.orderservice.orders.enums.OrderStatus;
-import dev.tuiop.orderservice.orders.enums.PaymentStatus;
 import dev.tuiop.orderservice.orders.exceptions.EmptyCartException;
 import dev.tuiop.orderservice.orders.mapper.OrderMapper;
 import dev.tuiop.orderservice.products.CatalogProductClient;
@@ -102,8 +101,7 @@ public class OrderService {
 
         Order order = Order.builder()
                 .customerId(customer.id())
-                .status(OrderStatus.CREATED)
-                .paymentStatus(PaymentStatus.PENDING)
+                .status(OrderStatus.PENDING_PAYMENT)
                 .totalPriceCents(0L)
                 .build();
 
@@ -119,13 +117,12 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
         log.info(
-                "Order created: orderId={}, customerId={}, itemCount={}, totalPriceCents={}, status={}, paymentStatus={}",
+                "Order created: orderId={}, customerId={}, itemCount={}, totalPriceCents={}, status={}",
                 savedOrder.getId(),
                 customer.id(),
                 savedOrder.getOrderItems().size(),
                 savedOrder.getTotalPriceCents(),
-                savedOrder.getStatus(),
-                savedOrder.getPaymentStatus()
+                savedOrder.getStatus()
         );
         return savedOrder;
 

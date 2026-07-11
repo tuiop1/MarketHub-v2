@@ -1,8 +1,8 @@
 package dev.tuiop.cartservice.carts.orders.enums;
 
 public enum OrderStatus {
-    CREATED,
-    CONFIRMED,
-    COMPLETED,
-    CANCELLED
+    PENDING_PAYMENT,
+    PAID,
+    REFUNDED,
+    PAYMENT_FAILED
 }

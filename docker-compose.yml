@@ -19,6 +19,9 @@ services:
       ORDER_DB: orders
       ORDER_DB_USER: markethub
       ORDER_DB_PASSWORD: markethub
+      PAYMENT_DB: payment
+      PAYMENT_DB_USER: markethub
+      PAYMENT_DB_PASSWORD: markethub
       KEYCLOAK_DB: keycloak
       KEYCLOAK_DB_USER: keycloak
       KEYCLOAK_DB_PASSWORD: keycloak

@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2026-07-11-002-add-payment-method-and-failure-reason
+      author: tuiop
+      labels: payment-service
+      changes:
+        - addColumn:
+            tableName: payments
+            columns:
+              - column:
+                  name: payment_method
+                  type: varchar(30)
+                  defaultValue: CARD
+                  constraints:
+                    nullable: false
+              - column:
+                  name: failure_reason
+                  type: varchar(255)
+        - sql:
+            sql: >-
+              ALTER TABLE payments
+              ADD CONSTRAINT chk_payments_payment_method
+              CHECK (payment_method IN ('CARD', 'QR', 'GOOGLE_PAY'))
+            rollback: ALTER TABLE payments DROP CONSTRAINT chk_payments_payment_method
+      rollback:
+        - dropColumn:
+            tableName: payments
+            columnName: failure_reason
+        - dropColumn:
+            tableName: payments
+            columnName: payment_method

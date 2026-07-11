@@ -3,7 +3,6 @@ package dev.tuiop.orderservice.orders;
 
 
 import dev.tuiop.orderservice.orders.enums.OrderStatus;
-import dev.tuiop.orderservice.orders.enums.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.BatchSize;
@@ -44,10 +43,6 @@ public class Order {
     @Column(nullable = false, length = 30)
     private OrderStatus status;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "payment_status", nullable = false, length = 30)
-    private PaymentStatus paymentStatus;
-
     @Column(name = "total_price_cents", nullable = false)
     private Long totalPriceCents;
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -71,11 +66,7 @@ public class Order {
         updatedAt = now;
 
         if (status == null) {
-            status = OrderStatus.CREATED;
-        }
-
-        if (paymentStatus == null) {
-            paymentStatus = PaymentStatus.PENDING;
+            status = OrderStatus.PENDING_PAYMENT;
         }
 
         if(totalPriceCents == null){

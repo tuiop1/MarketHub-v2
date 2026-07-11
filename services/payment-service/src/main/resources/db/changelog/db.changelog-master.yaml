@@ -1,0 +1,5 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/changes/2026-07-11-001-create-payment-schema.yaml
+  - include:
+      file: db/changelog/changes/2026-07-11-002-add-payment-method-and-failure-reason.yaml

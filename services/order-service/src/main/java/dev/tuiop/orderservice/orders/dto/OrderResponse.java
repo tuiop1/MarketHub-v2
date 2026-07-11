@@ -1,7 +1,6 @@
 package dev.tuiop.orderservice.orders.dto;
 
 import dev.tuiop.orderservice.orders.enums.OrderStatus;
-import dev.tuiop.orderservice.orders.enums.PaymentStatus;
 
 import java.time.Instant;
 import java.util.List;
@@ -12,8 +11,7 @@ public record OrderResponse(
         OrderStatus status,
         Long totalPriceCents,
         List<OrderItemResponse> items,
-        Instant createdAt,
-        PaymentStatus paymentStatus
+        Instant createdAt
 
 
 )

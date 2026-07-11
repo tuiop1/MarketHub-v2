@@ -3,7 +3,6 @@ package dev.tuiop.cartservice.carts.orders;
 
 
 import dev.tuiop.cartservice.carts.orders.enums.OrderStatus;
-import dev.tuiop.cartservice.carts.orders.enums.PaymentStatus;
 
 import java.time.Instant;
 import java.util.List;
@@ -14,8 +13,7 @@ public record OrderResponse(
         OrderStatus status,
         Long totalPriceCents,
         List<OrderItemResponse> items,
-        Instant createdAt,
-        PaymentStatus paymentStatus
+        Instant createdAt
 
 
 )
