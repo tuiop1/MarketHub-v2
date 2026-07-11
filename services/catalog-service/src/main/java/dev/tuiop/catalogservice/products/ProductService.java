@@ -30,7 +30,6 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -46,7 +45,6 @@ public class ProductService {
     private final CategoryRepository categoryRepository;
     private final ProductMapper productMapper;
     private final AccountMerchantClient accountMerchantClient;
-
 
     @PreAuthorize("hasRole('MERCHANT')")
     @Transactional
@@ -191,47 +189,6 @@ public class ProductService {
                 .toList();
     }
 
-    @Transactional
-    public List<ProductPurchaseResponse> decreaseStock(Collection<ProductStockDecreaseRequest> requests) {
-        Map<UUID, Integer> quantitiesByProductId = mergeQuantitiesByProductId(requests);
-        Map<UUID, Product> productsById = productRepository.findBuyableByIdsForUpdate(quantitiesByProductId.keySet())
-                .stream()
-                .collect(Collectors.toMap(Product::getId, Function.identity()));
-
-        validateAllProductsFound(quantitiesByProductId.keySet(), productsById);
-        Map<UUID, MerchantResponse> merchantsById = getPublicMerchantsById(productsById.values());
-
-        for (Map.Entry<UUID, Integer> entry : quantitiesByProductId.entrySet()) {
-            Product product = productsById.get(entry.getKey());
-            product.decreaseStock(entry.getValue());
-        }
-
-        return productsById.values()
-                .stream()
-                .map(product -> toPurchaseResponse(product, merchantsById.get(product.getMerchantId())))
-                .toList();
-    }
-
-    @Transactional
-    public List<ProductPurchaseResponse> increaseStock(Collection<ProductStockIncreaseRequest> requests) {
-        Map<UUID, Integer> quantitiesByProductId = mergeIncreaseQuantitiesByProductId(requests);
-        Map<UUID, Product> productsById = productRepository.findBuyableByIdsForUpdate(quantitiesByProductId.keySet())
-                .stream()
-                .collect(Collectors.toMap(Product::getId, Function.identity()));
-
-        validateAllProductsFound(quantitiesByProductId.keySet(), productsById);
-        Map<UUID, MerchantResponse> merchantsById = getPublicMerchantsById(productsById.values());
-
-        for (Map.Entry<UUID, Integer> entry : quantitiesByProductId.entrySet()) {
-            Product product = productsById.get(entry.getKey());
-            product.increaseStock(entry.getValue());
-        }
-
-        return productsById.values()
-                .stream()
-                .map(product -> toPurchaseResponse(product, merchantsById.get(product.getMerchantId())))
-                .toList();
-    }
 
 //    private Page<ProductResponse> toResponsePageWithImages(Page<Product> products) {
 //        List<UUID> productIds = products.getContent()
@@ -330,26 +287,6 @@ public class ProductService {
 
         return categoryRepository.findByIdAndActiveTrue(categoryId)
                 .orElseThrow(() -> new ResourceNotFoundException(Category.class, categoryId));
-    }
-
-    private Map<UUID, Integer> mergeQuantitiesByProductId(Collection<ProductStockDecreaseRequest> requests) {
-        Map<UUID, Integer> quantitiesByProductId = new LinkedHashMap<>();
-
-        for (ProductStockDecreaseRequest request : requests) {
-            quantitiesByProductId.merge(request.productId(), request.quantity(), Integer::sum);
-        }
-
-        return quantitiesByProductId;
-    }
-
-    private Map<UUID, Integer> mergeIncreaseQuantitiesByProductId(Collection<ProductStockIncreaseRequest> requests) {
-        Map<UUID, Integer> quantitiesByProductId = new LinkedHashMap<>();
-
-        for (ProductStockIncreaseRequest request : requests) {
-            quantitiesByProductId.merge(request.productId(), request.quantity(), Integer::sum);
-        }
-
-        return quantitiesByProductId;
     }
 
     private void validateAllProductsFound(

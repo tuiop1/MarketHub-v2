@@ -6,6 +6,7 @@ import dev.tuiop.orderservice.orders.enums.OrderStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.BatchSize;
+import org.springframework.security.core.parameters.P;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -38,8 +39,15 @@ public class Order {
     @Column(name = "customer_id",nullable = false, updatable = false)
     private UUID customerId;
 
+    @Column(name = "stock_reservation_id")
+    private UUID stockReservationId;
 
-    @Setter
+    @Column(name = "payment_id")
+    private UUID paymentId;
+
+    @Column(name = "failure_reason", length = 1000)
+    private String failureReason;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private OrderStatus status;
@@ -97,4 +105,43 @@ public class Order {
     }
 
 
+    public void attachPayment(UUID paymentId){
+        if(this.paymentId != null) {
+            return;
+
+        }
+
+        this.paymentId = paymentId;
+    }
+
+    public void markPaid() {
+        if (status != OrderStatus.PENDING_PAYMENT) {
+            throw new IllegalStateException("Order is not pending payment");
+        }
+
+        status = OrderStatus.PAID;
+    }
+
+    public void markPaymentFailed(String reason) {
+        if (status == OrderStatus.PAID) {
+            throw new IllegalStateException("Paid order cannot become failed");
+        }
+
+        status = OrderStatus.PAYMENT_FAILED;
+        failureReason = reason;
+    }
+
+    public void cancel(String reason) {
+        if (status == OrderStatus.PAID) {
+            throw new IllegalStateException("Paid order cannot be cancelled without refund");
+        }
+
+        status = OrderStatus.CANCELLED;
+        failureReason = reason;
+    }
+
+    public void markCompensationFailed(String reason) {
+        status = OrderStatus.COMPENSATION_FAILED;
+        failureReason = reason;
+    }
 }

@@ -41,7 +41,7 @@ public class Payment {
     private Long amountCents;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, updatable = false)
+    @Column(name = "status", nullable = false)
     private PaymentStatus status;
 
     @Enumerated(EnumType.STRING)
@@ -86,5 +86,35 @@ public class Payment {
         updatedAt = Instant.now();
     }
 
+    public void markSucceeded() {
+        if (status != PaymentStatus.PENDING) {
+            throw new IllegalStateException("Only pending payment can succeed");
+        }
 
+        status = PaymentStatus.SUCCEEDED;
+    }
+
+    public void markFailed(String reason) {
+        if (status != PaymentStatus.PENDING) {
+            throw new IllegalStateException("Only pending payment can fail");
+        }
+
+        status = PaymentStatus.FAILED;
+        failureReason = reason;
+    }
+
+    public void cancelOrRefund(String reason) {
+        if (status == PaymentStatus.PENDING) {
+            status = PaymentStatus.CANCELLED;
+            failureReason = reason;
+            return;
+        }
+
+        if (status == PaymentStatus.SUCCEEDED) {
+            status = PaymentStatus.REFUNDED;
+            failureReason = reason;
+            
+        }
+
+    }
 }

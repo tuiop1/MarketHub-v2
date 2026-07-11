@@ -8,6 +8,9 @@ import dev.tuiop.paymentservice.payments.enums.PaymentStatus;
 import dev.tuiop.paymentservice.payments.exceptions.PaymentAlreadyExistsException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -19,11 +22,14 @@ public class PaymentService {
 
 
 
-
+    @Transactional
     // simulate behavior, if paid with card or google pay - succeeded, if paid with qr - failed
     public Payment createPayment(CreatePaymentRequest request){
-        if(paymentRepository.existsByOrderId(request.orderId())){
-            throw new PaymentAlreadyExistsException(request.orderId());
+        Optional<Payment> payment = paymentRepository.findByOrderId(request.orderId());
+
+        if(payment.isPresent()){
+
+            return payment.get();
         }
 
 

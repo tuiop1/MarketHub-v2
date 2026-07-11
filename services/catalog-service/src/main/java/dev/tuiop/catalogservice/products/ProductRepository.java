@@ -45,9 +45,23 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
     @Query("""
             select product
             from Product product
+            join fetch product.category c
             where product.id in :productIds
               and product.active = true
               and product.category.active = true
             """)
     List<Product> findBuyableByIdsForUpdate(@Param("productIds") Collection<UUID> productIds);
+
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+           select p 
+           from Product p
+           join fetch p.category c
+           where p.id in :ids
+           order by p.id
+           
+           """
+    )
+    List<Product> findAllByIdInForUpdate(@Param("ids") Collection<UUID> ids);
 }

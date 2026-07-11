@@ -3,7 +3,9 @@ package dev.tuiop.catalogservice.products;
 
 
 import dev.tuiop.catalogservice.categories.Category;
+import dev.tuiop.catalogservice.products.exceptions.InvalidProductQuantityException;
 import dev.tuiop.catalogservice.products.exceptions.InsufficientStockException;
+import dev.tuiop.catalogservice.products.exceptions.ProductNotAvailableException;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -116,21 +118,29 @@ public class Product {
         this.active = true;
     }
 
-    public void decreaseStock(int quantity) {
+    public void reserveStock(int quantity) {
+        if (!active) {
+            throw new ProductNotAvailableException(id);
+        }
+
+        if (!category.getActive()) {
+            throw new ProductNotAvailableException(id);
+        }
+
         if (quantity <= 0) {
-            throw new IllegalArgumentException("Quantity must be positive");
+            throw new InvalidProductQuantityException(quantity);
         }
 
         if (stockQuantity < quantity) {
-            throw new InsufficientStockException(name, quantity, stockQuantity);
+            throw new InsufficientStockException(id, stockQuantity, quantity);
         }
 
         stockQuantity -= quantity;
     }
 
-    public void increaseStock(int quantity) {
+    public void releaseStock(int quantity) {
         if (quantity <= 0) {
-            throw new IllegalArgumentException("Quantity must be positive");
+            throw new InvalidProductQuantityException(quantity);
         }
 
         stockQuantity += quantity;

@@ -41,19 +41,6 @@ public class ProductController {
         return ResponseEntity.ok(productService.findBuyableByIdsForUpdate(productIds));
     }
 
-    @PostMapping("/purchase/stock/decrease")
-    public ResponseEntity<List<ProductPurchaseResponse>> decreaseStockForPurchase(
-            @Valid @RequestBody Collection<@Valid ProductStockDecreaseRequest> requests
-    ) {
-        return ResponseEntity.ok(productService.decreaseStock(requests));
-    }
-
-    @PostMapping("/purchase/stock/increase")
-    public ResponseEntity<List<ProductPurchaseResponse>> increaseStockForPurchase(
-            @Valid @RequestBody Collection<@Valid ProductStockIncreaseRequest> requests
-    ) {
-        return ResponseEntity.ok(productService.increaseStock(requests));
-    }
 
 
 

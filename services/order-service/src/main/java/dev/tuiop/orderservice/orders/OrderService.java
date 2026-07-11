@@ -58,7 +58,86 @@ public class OrderService {
     private final CartServiceClient cartServiceClient;
     private final PaymentServiceClient paymentServiceClient;
 
+
+
     @Transactional
+    public Order createPendingOrder(
+            UUID customerId,
+            UUID stockReservationId,
+            Collection<ProductResponse> products,
+            Map<UUID, Integer> quantitiesByProductId
+    ) {
+
+        Order order = Order.builder()
+                .customerId(customerId)
+                .stockReservationId(stockReservationId)
+                .status(OrderStatus.PENDING_PAYMENT)
+                .totalPriceCents(0L)
+                .build();
+
+        for(ProductResponse product : products) {
+            Integer quantity = quantitiesByProductId.get(product.id());
+            OrderItem item = OrderItem.fromProduct(product, quantity);
+            order.addItem(item);
+        }
+            order.recalculateTotalPrice();
+
+            return orderRepository.save(order);
+
+
+
+
+    }
+
+
+    @Transactional
+    public Order attachPayment(UUID orderId, UUID paymentId) {
+        Order order = getOrder(orderId);
+        order.attachPayment(paymentId);
+        return order;
+    }
+
+    @Transactional
+    public Order markPaid(UUID orderId) {
+        Order order = getOrder(orderId);
+        order.markPaid();
+        return order;
+    }
+
+    @Transactional
+    public Order markPaymentFailed(UUID orderId, String reason) {
+        Order order = getOrder(orderId);
+        order.markPaymentFailed(reason);
+        return order;
+    }
+
+    @Transactional
+    public Order cancel(UUID orderId, String reason) {
+        Order order = getOrder(orderId);
+        order.cancel(reason);
+        return order;
+    }
+
+    @Transactional
+    public void markCompensationFailed(UUID orderId, String reason) {
+        Order order = getOrder(orderId);
+        order.markCompensationFailed(reason);
+    }
+
+    private Order getOrder(UUID orderId) {
+        return orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException(Order.class, orderId));
+    }
+
+
+
+
+
+
+
+
+
+
     public OrderResponse purchase(
             Jwt jwt,
             PurchaseRequest request
@@ -192,7 +271,7 @@ public class OrderService {
                 .map(orderMapper::toOrderResponse);
     }
 
-    private Map<UUID, Integer> mergeQuantitiesByProductId(Collection<PurchaseItemRequest> items) {
+    Map<UUID, Integer> mergeQuantitiesByProductId(Collection<PurchaseItemRequest> items) {
 
         Map<UUID, Integer> quantitiesByProductId = new LinkedHashMap<>();
 
@@ -221,67 +300,7 @@ public class OrderService {
     }
 
 
-    private Collection<ProductResponse> decreaseStock(Map<UUID, Integer> quantitiesByProductId) {
-        Collection<ProductStockDecreaseRequest> requests = quantitiesByProductId.entrySet()
-                .stream()
-                .map(entry -> new ProductStockDecreaseRequest(entry.getKey(), entry.getValue()))
-                .toList();
 
-        try {
-            Collection<ProductResponse> products = catalogProductClient.decreaseStock(requests);
-            Map<UUID, ProductResponse> productsById = products.stream()
-                    .collect(Collectors.toMap(ProductResponse::id, Function.identity()));
-
-            validateAllProductsFound(quantitiesByProductId.keySet(), productsById);
-
-            return products;
-        } catch (HttpClientErrorException.NotFound exception) {
-            throw new ResourceNotFoundException(ProductResponse.class, "productIds", quantitiesByProductId.keySet());
-        } catch (HttpClientErrorException.Conflict exception) {
-            log.warn("Catalog service rejected stock decrease request: productIds={}", quantitiesByProductId.keySet(), exception);
-            throw CatalogServiceException.rejected(exception);
-        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
-            log.warn("Catalog service authorization failed while decreasing stock", exception);
-            throw CatalogServiceException.unauthorized(exception);
-        } catch (ResourceAccessException exception) {
-            log.warn("Catalog service request failed while decreasing stock", exception);
-            throw CatalogServiceException.unavailable(exception);
-        } catch (RestClientException exception) {
-            log.warn("Catalog service client failed while decreasing stock", exception);
-            throw CatalogServiceException.unavailable(exception);
-        }
-    }
-
-    private Collection<ProductResponse> increaseStock(Map<UUID, Integer> quantitiesByProductId) {
-        Collection<ProductStockIncreaseRequest> requests = quantitiesByProductId.entrySet()
-                .stream()
-                .map(entry -> new ProductStockIncreaseRequest(entry.getKey(), entry.getValue()))
-                .toList();
-
-        try {
-            Collection<ProductResponse> products = catalogProductClient.increaseStock(requests);
-            Map<UUID, ProductResponse> productsById = products.stream()
-                    .collect(Collectors.toMap(ProductResponse::id, Function.identity()));
-
-            validateAllProductsFound(quantitiesByProductId.keySet(), productsById);
-
-            return products;
-        } catch (HttpClientErrorException.NotFound exception) {
-            throw new ResourceNotFoundException(ProductResponse.class, "productIds", quantitiesByProductId.keySet());
-        } catch (HttpClientErrorException.Conflict exception) {
-            log.warn("Catalog service rejected stock increase request: productIds={}", quantitiesByProductId.keySet(), exception);
-            throw CatalogServiceException.rejected(exception);
-        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
-            log.warn("Catalog service authorization failed while increasing stock", exception);
-            throw CatalogServiceException.unauthorized(exception);
-        } catch (ResourceAccessException exception) {
-            log.warn("Catalog service request failed while increasing stock", exception);
-            throw CatalogServiceException.unavailable(exception);
-        } catch (RestClientException exception) {
-            log.warn("Catalog service client failed while increasing stock", exception);
-            throw CatalogServiceException.unavailable(exception);
-        }
-    }
 
     private CartResponse getMyCart(Jwt jwt) {
         try {
@@ -326,7 +345,7 @@ public class OrderService {
 
 
 
-    private CustomerResponse getMe(Jwt jwt) {
+     CustomerResponse getMe(Jwt jwt) {
         try {
             return accountCustomerClient.getMe(authorizationHeader(jwt));
         } catch (HttpClientErrorException.NotFound exception) {
