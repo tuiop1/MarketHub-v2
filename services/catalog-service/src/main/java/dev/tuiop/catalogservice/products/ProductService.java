@@ -14,6 +14,7 @@ import dev.tuiop.catalogservice.products.dto.CreateProductRequest;
 import dev.tuiop.catalogservice.products.dto.ProductPurchaseResponse;
 import dev.tuiop.catalogservice.products.dto.ProductResponse;
 import dev.tuiop.catalogservice.products.dto.ProductStockDecreaseRequest;
+import dev.tuiop.catalogservice.products.dto.ProductStockIncreaseRequest;
 import dev.tuiop.catalogservice.products.dto.UpdateProductRequest;
 import dev.tuiop.catalogservice.products.mapper.ProductMapper;
 import lombok.RequiredArgsConstructor;
@@ -211,6 +212,27 @@ public class ProductService {
                 .toList();
     }
 
+    @Transactional
+    public List<ProductPurchaseResponse> increaseStock(Collection<ProductStockIncreaseRequest> requests) {
+        Map<UUID, Integer> quantitiesByProductId = mergeIncreaseQuantitiesByProductId(requests);
+        Map<UUID, Product> productsById = productRepository.findBuyableByIdsForUpdate(quantitiesByProductId.keySet())
+                .stream()
+                .collect(Collectors.toMap(Product::getId, Function.identity()));
+
+        validateAllProductsFound(quantitiesByProductId.keySet(), productsById);
+        Map<UUID, MerchantResponse> merchantsById = getPublicMerchantsById(productsById.values());
+
+        for (Map.Entry<UUID, Integer> entry : quantitiesByProductId.entrySet()) {
+            Product product = productsById.get(entry.getKey());
+            product.increaseStock(entry.getValue());
+        }
+
+        return productsById.values()
+                .stream()
+                .map(product -> toPurchaseResponse(product, merchantsById.get(product.getMerchantId())))
+                .toList();
+    }
+
 //    private Page<ProductResponse> toResponsePageWithImages(Page<Product> products) {
 //        List<UUID> productIds = products.getContent()
 //                .stream()
@@ -314,6 +336,16 @@ public class ProductService {
         Map<UUID, Integer> quantitiesByProductId = new LinkedHashMap<>();
 
         for (ProductStockDecreaseRequest request : requests) {
+            quantitiesByProductId.merge(request.productId(), request.quantity(), Integer::sum);
+        }
+
+        return quantitiesByProductId;
+    }
+
+    private Map<UUID, Integer> mergeIncreaseQuantitiesByProductId(Collection<ProductStockIncreaseRequest> requests) {
+        Map<UUID, Integer> quantitiesByProductId = new LinkedHashMap<>();
+
+        for (ProductStockIncreaseRequest request : requests) {
             quantitiesByProductId.merge(request.productId(), request.quantity(), Integer::sum);
         }
 

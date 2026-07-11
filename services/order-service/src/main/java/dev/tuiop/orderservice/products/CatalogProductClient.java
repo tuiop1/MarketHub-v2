@@ -19,4 +19,7 @@ public interface CatalogProductClient {
 
     @PostExchange("/stock/decrease")
     List<ProductResponse> decreaseStock(@RequestBody Collection<ProductStockDecreaseRequest> requests);
+
+    @PostExchange("/stock/increase")
+    List<ProductResponse> increaseStock(@RequestBody Collection<ProductStockIncreaseRequest> requests);
 }

@@ -39,6 +39,7 @@ public class Order {
     private UUID customerId;
 
 
+    @Setter
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private OrderStatus status;

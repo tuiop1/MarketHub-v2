@@ -5,6 +5,7 @@ package dev.tuiop.catalogservice.products;
 import dev.tuiop.catalogservice.products.dto.ProductResponse;
 import dev.tuiop.catalogservice.products.dto.ProductPurchaseResponse;
 import dev.tuiop.catalogservice.products.dto.ProductStockDecreaseRequest;
+import dev.tuiop.catalogservice.products.dto.ProductStockIncreaseRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -45,6 +46,13 @@ public class ProductController {
             @Valid @RequestBody Collection<@Valid ProductStockDecreaseRequest> requests
     ) {
         return ResponseEntity.ok(productService.decreaseStock(requests));
+    }
+
+    @PostMapping("/purchase/stock/increase")
+    public ResponseEntity<List<ProductPurchaseResponse>> increaseStockForPurchase(
+            @Valid @RequestBody Collection<@Valid ProductStockIncreaseRequest> requests
+    ) {
+        return ResponseEntity.ok(productService.increaseStock(requests));
     }
 
 

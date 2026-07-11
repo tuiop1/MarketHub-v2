@@ -128,4 +128,12 @@ public class Product {
         stockQuantity -= quantity;
     }
 
+    public void increaseStock(int quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be positive");
+        }
+
+        stockQuantity += quantity;
+    }
+
 }

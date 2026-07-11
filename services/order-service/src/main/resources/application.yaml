@@ -37,3 +37,5 @@ services:
     url: ${CATALOG_SERVICE_URL:http://localhost:8082}
   cart:
     url: ${CART_SERVICE_URL:http://localhost:8084}
+  payment:
+    url: ${PAYMENT_SERVICE_URL:http://localhost:8085}

@@ -5,6 +5,7 @@ import dev.tuiop.paymentservice.payments.dto.PaymentResultResponse;
 import dev.tuiop.paymentservice.payments.mapper.PaymentMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,8 +19,8 @@ public class PaymentController {
     private final PaymentMapper paymentMapper;
 
     @PostMapping
-    public PaymentResultResponse createPayment(@Valid @RequestBody CreatePaymentRequest request) {
+    public ResponseEntity<PaymentResultResponse> createPayment(@Valid @RequestBody CreatePaymentRequest request) {
         Payment payment = paymentService.createPayment(request);
-        return paymentMapper.toResultResponse(payment);
+        return ResponseEntity.ok(paymentMapper.toResultResponse(payment));
     }
 }

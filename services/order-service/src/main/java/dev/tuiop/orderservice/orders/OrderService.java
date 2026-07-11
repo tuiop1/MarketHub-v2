@@ -14,10 +14,17 @@ import dev.tuiop.orderservice.orders.dto.PurchaseItemRequest;
 import dev.tuiop.orderservice.orders.dto.PurchaseRequest;
 import dev.tuiop.orderservice.orders.enums.OrderStatus;
 import dev.tuiop.orderservice.orders.exceptions.EmptyCartException;
+import dev.tuiop.orderservice.orders.exceptions.OrderNotPendingPaymentException;
 import dev.tuiop.orderservice.orders.mapper.OrderMapper;
+import dev.tuiop.orderservice.payments.CreatePaymentRequest;
+import dev.tuiop.orderservice.payments.PaymentMethod;
+import dev.tuiop.orderservice.payments.PaymentResultResponse;
+import dev.tuiop.orderservice.payments.PaymentStatus;
+import dev.tuiop.orderservice.payments.client.PaymentServiceClient;
 import dev.tuiop.orderservice.products.CatalogProductClient;
 import dev.tuiop.orderservice.products.ProductResponse;
 import dev.tuiop.orderservice.products.ProductStockDecreaseRequest;
+import dev.tuiop.orderservice.products.ProductStockIncreaseRequest;
 import dev.tuiop.orderservice.products.exceptions.CatalogServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,19 +56,24 @@ public class OrderService {
     private final AccountCustomerClient accountCustomerClient;
     private final CatalogProductClient catalogProductClient;
     private final CartServiceClient cartServiceClient;
+    private final PaymentServiceClient paymentServiceClient;
 
     @Transactional
     public OrderResponse purchase(
             Jwt jwt,
             PurchaseRequest request
-    ) {
-       return orderMapper.toOrderResponse(createOrder(jwt, mergeQuantitiesByProductId(request.items())));
 
+    ) {
+        Map<UUID, Integer> quantitiesByProductId = mergeQuantitiesByProductId(request.items());
+        Order order = createOrderAndPay(jwt, quantitiesByProductId, request.paymentMethod());
+
+        return orderMapper.toOrderResponse(order);
     }
 
     @Transactional
     public OrderResponse purchaseMyCart(
-            Jwt jwt
+            Jwt jwt,
+            PaymentMethod paymentMethod
     ) {
         getMe(jwt);
 
@@ -71,12 +83,14 @@ public class OrderService {
             throw new EmptyCartException();
         }
 
-        Map<UUID, Integer> quantitiesByProductId = myCart.cartItems().stream().collect(Collectors.toMap(
-                customerItem -> customerItem.productId(),
-                CartItemResponse::quantity
-        ));
+        Map<UUID, Integer> quantitiesByProductId = myCart.cartItems()
+                .stream()
+                .collect(Collectors.toMap(
+                        CartItemResponse::productId,
+                        CartItemResponse::quantity
+                ));
 
-        Order order = createOrder(jwt, quantitiesByProductId);
+        Order order = createOrderAndPay(jwt, quantitiesByProductId, paymentMethod);
 
         clearMyCart(jwt);
 
@@ -113,6 +127,7 @@ public class OrderService {
             order.addItem(orderItem);
         }
 
+
         order.recalculateTotalPrice();
 
         Order savedOrder = orderRepository.save(order);
@@ -126,6 +141,45 @@ public class OrderService {
         );
         return savedOrder;
 
+    }
+
+    private PaymentResultResponse makePayment(Jwt jwt, UUID orderId, PaymentMethod paymentMethod) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException(Order.class, orderId));
+
+
+        if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
+            throw new OrderNotPendingPaymentException(orderId, order.getStatus());
+        }
+
+        return paymentServiceClient.createPayment(
+                authorizationHeader(jwt),
+                CreatePaymentRequest.builder()
+                        .orderId(orderId)
+                        .customerId(order.getCustomerId())
+                        .amountCents(order.getTotalPriceCents())
+                        .paymentMethod(paymentMethod)
+                        .build()
+        );
+    }
+
+    private Order createOrderAndPay(Jwt jwt,
+            Map<UUID, Integer> quantitiesByProductId,
+            PaymentMethod method
+    ) {
+
+        Order returnedOrder = createOrder(jwt, quantitiesByProductId);
+
+        PaymentResultResponse paymentResultResponse = makePayment(jwt, returnedOrder.getId(), method);
+
+        if (paymentResultResponse.status() == PaymentStatus.FAILED) {
+            returnedOrder.setStatus(OrderStatus.PAYMENT_FAILED);
+            increaseStock(quantitiesByProductId);
+        } else if (paymentResultResponse.status() == PaymentStatus.SUCCEEDED) {
+            returnedOrder.setStatus(OrderStatus.PAID);
+        }
+
+        return orderRepository.save(returnedOrder);
     }
 
     @Transactional(readOnly = true)
@@ -143,15 +197,7 @@ public class OrderService {
         Map<UUID, Integer> quantitiesByProductId = new LinkedHashMap<>();
 
         for (PurchaseItemRequest item : items) {
-            UUID id = item.productId();
-            Integer quantity = item.quantity();
-
-            if (!quantitiesByProductId.containsKey(id)) {
-                quantitiesByProductId.put(id, quantity);
-            } else {
-                quantitiesByProductId.put(id, quantitiesByProductId.get(id) +  quantity);
-            }
-
+            quantitiesByProductId.merge(item.productId(), item.quantity(), Integer::sum);
         }
 
         return quantitiesByProductId;
@@ -202,6 +248,37 @@ public class OrderService {
             throw CatalogServiceException.unavailable(exception);
         } catch (RestClientException exception) {
             log.warn("Catalog service client failed while decreasing stock", exception);
+            throw CatalogServiceException.unavailable(exception);
+        }
+    }
+
+    private Collection<ProductResponse> increaseStock(Map<UUID, Integer> quantitiesByProductId) {
+        Collection<ProductStockIncreaseRequest> requests = quantitiesByProductId.entrySet()
+                .stream()
+                .map(entry -> new ProductStockIncreaseRequest(entry.getKey(), entry.getValue()))
+                .toList();
+
+        try {
+            Collection<ProductResponse> products = catalogProductClient.increaseStock(requests);
+            Map<UUID, ProductResponse> productsById = products.stream()
+                    .collect(Collectors.toMap(ProductResponse::id, Function.identity()));
+
+            validateAllProductsFound(quantitiesByProductId.keySet(), productsById);
+
+            return products;
+        } catch (HttpClientErrorException.NotFound exception) {
+            throw new ResourceNotFoundException(ProductResponse.class, "productIds", quantitiesByProductId.keySet());
+        } catch (HttpClientErrorException.Conflict exception) {
+            log.warn("Catalog service rejected stock increase request: productIds={}", quantitiesByProductId.keySet(), exception);
+            throw CatalogServiceException.rejected(exception);
+        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
+            log.warn("Catalog service authorization failed while increasing stock", exception);
+            throw CatalogServiceException.unauthorized(exception);
+        } catch (ResourceAccessException exception) {
+            log.warn("Catalog service request failed while increasing stock", exception);
+            throw CatalogServiceException.unavailable(exception);
+        } catch (RestClientException exception) {
+            log.warn("Catalog service client failed while increasing stock", exception);
             throw CatalogServiceException.unavailable(exception);
         }
     }

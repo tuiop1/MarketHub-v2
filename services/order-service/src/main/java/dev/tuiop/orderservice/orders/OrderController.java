@@ -3,6 +3,7 @@ package dev.tuiop.orderservice.orders;
 
 import dev.tuiop.orderservice.orders.dto.OrderResponse;
 import dev.tuiop.orderservice.orders.dto.PurchaseRequest;
+import dev.tuiop.orderservice.payments.PaymentMethod;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -25,15 +26,17 @@ public class OrderController {
     public ResponseEntity<OrderResponse> purchase(
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody PurchaseRequest request
+
     ) {
         return ResponseEntity.status(201).body(orderService.purchase(jwt, request));
     }
 
     @PostMapping("/my-cart/purchase")
     public ResponseEntity<OrderResponse> purchaseMyCart(
-            @AuthenticationPrincipal Jwt jwt
-    ) {
-        return ResponseEntity.status(201).body(orderService.purchaseMyCart(jwt));
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestBody PaymentMethod paymentMethod
+            ) {
+        return ResponseEntity.status(201).body(orderService.purchaseMyCart(jwt, paymentMethod));
     }
 
     @GetMapping("/me")
