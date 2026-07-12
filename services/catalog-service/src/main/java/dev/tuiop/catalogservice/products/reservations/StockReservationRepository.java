@@ -17,7 +17,7 @@ public interface StockReservationRepository extends JpaRepository<StockReservati
     @Query("""
            select sr
            from StockReservation sr
-           join fetch sr.items 
+           join fetch sr.items
            where sr.id = :id
 """)
     Optional<StockReservation> findByIdForUpdate(@Param("id") UUID id);

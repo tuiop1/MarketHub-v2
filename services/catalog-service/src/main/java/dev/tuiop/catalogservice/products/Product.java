@@ -114,11 +114,7 @@ public class Product {
         this.active = false;
     }
 
-    public void activate() {
-        this.active = true;
-    }
-
-    public void reserveStock(int quantity) {
+        public void reserveStock(int quantity) {
         if (!active) {
             throw new ProductNotAvailableException(id);
         }

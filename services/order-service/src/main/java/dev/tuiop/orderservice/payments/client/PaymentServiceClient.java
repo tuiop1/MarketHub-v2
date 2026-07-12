@@ -22,7 +22,7 @@ public interface PaymentServiceClient {
     @PostExchange("/{paymentId}/cancel-or-refund")
     PaymentResultResponse cancelOrRefund(
             @RequestHeader("Authorization") String authorization,
-            @PathVariable UUID paymentId
+            @PathVariable("paymentId") UUID paymentId
     );
 
 }

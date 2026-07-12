@@ -18,13 +18,10 @@ import java.util.UUID;
 @RequestMapping("/api/v1/merchants")
 @RestController
 @RequiredArgsConstructor
-
 public class MerchantController {
-
 
     private final MerchantService merchantService;
     private final MerchantMapper merchantMapper;
-
 
     @GetMapping
     public ResponseEntity<Page<MerchantResponse>> getAllActiveAndVerifiedMerchants(Pageable pageable) {
@@ -53,15 +50,12 @@ public class MerchantController {
 
     @GetMapping("/keycloak/{keycloakUserId}")
     public ResponseEntity<MerchantResponse> getMerchantByKeycloakUserId(
-            @PathVariable String keycloakUserId
+            @PathVariable("keycloakUserId") String keycloakUserId
     ) {
         return ResponseEntity.ok(merchantMapper.toResponse(
                 merchantService.getByKeycloakUserId(keycloakUserId)
         ));
     }
-
-
-
 
     @PreAuthorize("hasAnyRole('MERCHANT', 'MERCHANT_PENDING', 'MERCHANT_REJECTED')")
     @GetMapping("/me")
@@ -69,7 +63,5 @@ public class MerchantController {
             @AuthenticationPrincipal Jwt jwt
     ) {
         return ResponseEntity.ok(merchantMapper.toResponse(merchantService.getMe(jwt)));
-
     }
-
 }

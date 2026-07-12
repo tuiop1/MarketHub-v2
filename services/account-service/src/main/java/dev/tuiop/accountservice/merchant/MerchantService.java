@@ -11,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,10 +28,9 @@ public class MerchantService {
     private final CustomerRepository customerRepository;
     private final MerchantMapper merchantMapper;
 
-
     @Transactional(readOnly = true)
-    public Merchant getMe(Jwt jwt){
-       return getByKeycloakUserId(jwt.getSubject());
+    public Merchant getMe(Jwt jwt) {
+        return getByKeycloakUserId(jwt.getSubject());
     }
 
     @Transactional(readOnly = true)
@@ -57,18 +55,12 @@ public class MerchantService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Merchant> getAllActiveAndVerifiedMerchants(Pageable pageable){
-
-
-       return merchantRepository.findByStatus(MerchantStatus.VERIFIED, pageable);
+    public Page<Merchant> getAllActiveAndVerifiedMerchants(Pageable pageable) {
+        return merchantRepository.findByStatus(MerchantStatus.VERIFIED, pageable);
     }
 
-
-
-
     @Transactional
-    public Merchant create(String keycloakUserId, String normalizedEmail, MerchantRegistrationRequest request) {
-        String email = normalizedEmail;
+    public Merchant create(String keycloakUserId, String email, MerchantRegistrationRequest request) {
         String shopName = request.shopName().trim();
 
         if (merchantRepository.existsByEmailIgnoreCase(email) ||
@@ -96,6 +88,4 @@ public class MerchantService {
 
         return savedMerchant;
     }
-
-
 }

@@ -55,7 +55,7 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
-           select p 
+           select p
            from Product p
            join fetch p.category c
            where p.id in :ids

@@ -24,10 +24,9 @@ public class CustomerService {
     @Transactional
     public Customer create(
             String keycloakUserId,
-            String normalizedEmail,
+            String email,
             CustomerRegistrationRequest request
     ) {
-        String email = normalizedEmail;
 
         if (customerRepository.existsByEmailIgnoreCase(email) || merchantRepository.existsByEmailIgnoreCase(email)) {
             throw new EmailAlreadyTakenException(email);
@@ -44,14 +43,8 @@ public class CustomerService {
 
     @PreAuthorize("hasRole('CUSTOMER')")
     @Transactional(readOnly = true)
-    public Customer getMe(String keycloakUserId){
-
-
-
-
-
+    public Customer getMe(String keycloakUserId) {
         return getByKeycloakUserId(keycloakUserId);
-
     }
 
     @Transactional(readOnly = true)
@@ -61,7 +54,7 @@ public class CustomerService {
     }
 
     @Transactional(readOnly = true)
-    public Customer getByKeycloakUserId(String keycloakUserId){
+    public Customer getByKeycloakUserId(String keycloakUserId) {
         return customerRepository.findByKeycloakUserId(keycloakUserId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         Customer.class,
@@ -69,5 +62,4 @@ public class CustomerService {
                         keycloakUserId
                 ));
     }
-
 }

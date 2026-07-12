@@ -14,8 +14,8 @@ public interface CatalogStockReservationClient {
     StockReservationResponse reserveStock(@RequestBody StockReservationRequest request);
 
     @PostExchange("/{reservationId}/release")
-    void releaseStock(@PathVariable UUID reservationId);
+    void releaseStock(@PathVariable("reservationId") UUID reservationId);
 
     @PostExchange("/{reservationId}/commit")
-    void commitStock(@PathVariable UUID reservationId);
+    void commitStock(@PathVariable("reservationId") UUID reservationId);
 }

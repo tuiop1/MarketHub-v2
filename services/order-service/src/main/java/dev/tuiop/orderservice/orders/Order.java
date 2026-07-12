@@ -1,12 +1,9 @@
 package dev.tuiop.orderservice.orders;
 
-
-
 import dev.tuiop.orderservice.orders.enums.OrderStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.BatchSize;
-import org.springframework.security.core.parameters.P;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -36,7 +33,7 @@ public class Order {
     @Column(nullable = false)
     private Long version;
 
-    @Column(name = "customer_id",nullable = false, updatable = false)
+    @Column(name = "customer_id", nullable = false, updatable = false)
     private UUID customerId;
 
     @Column(name = "stock_reservation_id")
@@ -64,7 +61,7 @@ public class Order {
     @BatchSize(size = 50)
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-   private  List<OrderItem> orderItems = new ArrayList<>();
+    private List<OrderItem> orderItems = new ArrayList<>();
 
 
     @PrePersist
@@ -78,25 +75,23 @@ public class Order {
             status = OrderStatus.PENDING_PAYMENT;
         }
 
-        if(totalPriceCents == null){
+        if (totalPriceCents == null) {
             totalPriceCents = 0L;
         }
-
     }
 
-    public void addItem(OrderItem orderItem){
+    public void addItem(OrderItem orderItem) {
         this.orderItems.add(orderItem);
         orderItem.assignOrder(this);
     }
 
-    public void recalculateTotalPrice(){
+    public void recalculateTotalPrice() {
         long sumCents = 0L;
-       for(OrderItem item : orderItems){
-           sumCents+= item.getTotalPriceSnapshotCents();
+        for (OrderItem item : orderItems) {
+            sumCents += item.getTotalPriceSnapshotCents();
+        }
 
-       }
-
-       totalPriceCents = sumCents;
+        totalPriceCents = sumCents;
     }
 
     @PreUpdate
@@ -105,10 +100,9 @@ public class Order {
     }
 
 
-    public void attachPayment(UUID paymentId){
-        if(this.paymentId != null) {
+    public void attachPayment(UUID paymentId) {
+        if (this.paymentId != null) {
             return;
-
         }
 
         this.paymentId = paymentId;

@@ -4,7 +4,6 @@ import dev.tuiop.accountservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.accountservice.customer.Customer;
 import dev.tuiop.accountservice.customer.CustomerRepository;
 import dev.tuiop.accountservice.security.keycloak.KeycloakIdentityService;
-import dev.tuiop.accountservice.security.keycloak.RealmRole;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -45,12 +44,12 @@ public class CustomerAdminService {
 
         } catch (RuntimeException exception) {
 
-            if(userEnabled){
-                    try {
-                        keycloakIdentityService.disableUser(keycloakUserId);
-                    } catch (RuntimeException rollbackException) {
-                        exception.addSuppressed(rollbackException);
-                    }
+            if (userEnabled) {
+                try {
+                    keycloakIdentityService.disableUser(keycloakUserId);
+                } catch (RuntimeException rollbackException) {
+                    exception.addSuppressed(rollbackException);
+                }
             }
 
             throw exception;

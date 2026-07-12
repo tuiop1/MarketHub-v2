@@ -15,7 +15,7 @@ import java.util.UUID;
 public interface CatalogProductClient {
 
     @GetExchange("/{productId}")
-    ProductResponse getProductById(@PathVariable UUID productId);
+    ProductResponse getProductById(@PathVariable("productId") UUID productId);
 
     @PostExchange("/purchase/buyable")
     List<ProductResponse> getBuyableProductsByIds(@RequestBody Collection<UUID> ids);

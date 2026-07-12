@@ -1,7 +1,5 @@
 package dev.tuiop.catalogservice.products;
 
-
-
 import dev.tuiop.catalogservice.categories.Category;
 import dev.tuiop.catalogservice.categories.CategoryRepository;
 import dev.tuiop.catalogservice.merchants.AccountMerchantClient;
@@ -13,8 +11,6 @@ import dev.tuiop.catalogservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.catalogservice.products.dto.CreateProductRequest;
 import dev.tuiop.catalogservice.products.dto.ProductPurchaseResponse;
 import dev.tuiop.catalogservice.products.dto.ProductResponse;
-import dev.tuiop.catalogservice.products.dto.ProductStockDecreaseRequest;
-import dev.tuiop.catalogservice.products.dto.ProductStockIncreaseRequest;
 import dev.tuiop.catalogservice.products.dto.UpdateProductRequest;
 import dev.tuiop.catalogservice.products.mapper.ProductMapper;
 import lombok.RequiredArgsConstructor;
@@ -166,10 +162,9 @@ public class ProductService {
 
         MerchantResponse merchantResponse = getPublicMerchant(product.getMerchantId(), productId);
 
-        if(merchantResponse.status() != MerchantStatus.VERIFIED){
+        if (merchantResponse.status() != MerchantStatus.VERIFIED) {
             throw new ResourceNotFoundException(Product.class, productId);
         }
-
 
         return productMapper.toResponse(product);
     }
@@ -216,7 +211,7 @@ public class ProductService {
     private MerchantResponse getMerchantByKeycloakUserId(String keycloakId) {
         try {
             return accountMerchantClient.getMerchantByKeycloakUserId(keycloakId);
-        } catch (HttpClientErrorException.NotFound exception ){
+        } catch (HttpClientErrorException.NotFound exception) {
             throw new ResourceNotFoundException(MerchantResponse.class, "keycloakId", keycloakId);
         } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
             log.warn("Account service authorization failed while getting merchant by keycloak id", exception);
@@ -301,8 +296,6 @@ public class ProductService {
     }
 
     private ProductPurchaseResponse toPurchaseResponse(Product product, MerchantResponse merchant) {
-
-
         if (merchant.status() != MerchantStatus.VERIFIED) {
             throw new ResourceNotFoundException(Product.class, product.getId());
         }
@@ -323,8 +316,8 @@ public class ProductService {
     }
 
     private void validateMerchantCanManageProducts(MerchantResponse merchant) {
-       if(merchant.status() != MerchantStatus.VERIFIED){
-           throw new MerchantInvalidStatusException(merchant.status());
-       }
+        if (merchant.status() != MerchantStatus.VERIFIED) {
+            throw new MerchantInvalidStatusException(merchant.status());
+        }
     }
 }

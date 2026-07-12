@@ -1,9 +1,6 @@
 package dev.tuiop.catalogservice.products.dto;
 
-
-
 import java.time.Instant;
-import java.util.List;
 import java.util.UUID;
 
 public record ProductResponse(
