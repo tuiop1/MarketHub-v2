@@ -3,7 +3,7 @@ package dev.tuiop.orderservice.orders;
 
 import dev.tuiop.orderservice.orders.dto.OrderResponse;
 import dev.tuiop.orderservice.orders.dto.PurchaseRequest;
-import dev.tuiop.orderservice.payments.PaymentMethod;
+import dev.tuiop.orderservice.external.payments.PaymentMethod;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

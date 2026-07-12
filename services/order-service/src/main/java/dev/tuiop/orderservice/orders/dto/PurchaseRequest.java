@@ -1,6 +1,6 @@
 package dev.tuiop.orderservice.orders.dto;
 
-import dev.tuiop.orderservice.payments.PaymentMethod;
+import dev.tuiop.orderservice.external.payments.PaymentMethod;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;

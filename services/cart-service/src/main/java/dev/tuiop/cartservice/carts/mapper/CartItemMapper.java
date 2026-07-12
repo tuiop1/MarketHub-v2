@@ -3,7 +3,7 @@ package dev.tuiop.cartservice.carts.mapper;
 
 import dev.tuiop.cartservice.carts.dto.CartItemResponse;
 import dev.tuiop.cartservice.carts.item.CartItem;
-import dev.tuiop.cartservice.products.ProductResponse;
+import dev.tuiop.cartservice.external.products.ProductResponse;
 import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")

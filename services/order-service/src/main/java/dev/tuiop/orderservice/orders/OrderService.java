@@ -1,19 +1,19 @@
 package dev.tuiop.orderservice.orders;
 
 
-import dev.tuiop.orderservice.carts.CartServiceClient;
-import dev.tuiop.orderservice.carts.dto.CartResponse;
-import dev.tuiop.orderservice.carts.exceptions.CartServiceException;
+import dev.tuiop.orderservice.external.carts.CartServiceClient;
+import dev.tuiop.orderservice.external.carts.dto.CartResponse;
+import dev.tuiop.orderservice.external.carts.exceptions.CartServiceException;
 import dev.tuiop.orderservice.common.exceptions.ResourceNotFoundException;
-import dev.tuiop.orderservice.customers.AccountCustomerClient;
-import dev.tuiop.orderservice.customers.CustomerResponse;
-import dev.tuiop.orderservice.customers.exceptions.AccountServiceException;
+import dev.tuiop.orderservice.external.customers.AccountCustomerClient;
+import dev.tuiop.orderservice.external.customers.CustomerResponse;
+import dev.tuiop.orderservice.external.customers.exceptions.AccountServiceException;
 import dev.tuiop.orderservice.orders.dto.OrderResponse;
 import dev.tuiop.orderservice.orders.dto.PurchaseItemRequest;
 import dev.tuiop.orderservice.orders.dto.PurchaseRequest;
 import dev.tuiop.orderservice.orders.exceptions.EmptyCartException;
 import dev.tuiop.orderservice.orders.mapper.OrderMapper;
-import dev.tuiop.orderservice.payments.PaymentMethod;
+import dev.tuiop.orderservice.external.payments.PaymentMethod;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;

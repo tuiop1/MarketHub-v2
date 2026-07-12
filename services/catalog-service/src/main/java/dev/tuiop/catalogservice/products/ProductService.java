@@ -2,11 +2,11 @@ package dev.tuiop.catalogservice.products;
 
 import dev.tuiop.catalogservice.categories.Category;
 import dev.tuiop.catalogservice.categories.CategoryRepository;
-import dev.tuiop.catalogservice.merchants.AccountMerchantClient;
-import dev.tuiop.catalogservice.merchants.MerchantResponse;
-import dev.tuiop.catalogservice.merchants.MerchantStatus;
-import dev.tuiop.catalogservice.merchants.exceptions.AccountServiceException;
-import dev.tuiop.catalogservice.merchants.exceptions.MerchantInvalidStatusException;
+import dev.tuiop.catalogservice.external.merchants.AccountMerchantClient;
+import dev.tuiop.catalogservice.external.merchants.MerchantResponse;
+import dev.tuiop.catalogservice.external.merchants.MerchantStatus;
+import dev.tuiop.catalogservice.external.merchants.exceptions.AccountServiceException;
+import dev.tuiop.catalogservice.external.merchants.exceptions.MerchantInvalidStatusException;
 import dev.tuiop.catalogservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.catalogservice.products.dto.CreateProductRequest;
 import dev.tuiop.catalogservice.products.dto.ProductPurchaseResponse;

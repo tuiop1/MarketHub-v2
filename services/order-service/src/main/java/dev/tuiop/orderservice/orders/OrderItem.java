@@ -1,7 +1,7 @@
 package dev.tuiop.orderservice.orders;
 
 
-import dev.tuiop.orderservice.products.ProductResponse;
+import dev.tuiop.orderservice.external.products.ProductResponse;
 import jakarta.persistence.*;
 import lombok.*;
 
