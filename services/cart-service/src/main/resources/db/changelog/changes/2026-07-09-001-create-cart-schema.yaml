@@ -1,0 +1,116 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2026-07-09-001-create-carts
+      author: tuiop
+      labels: cart-service
+      changes:
+        - createTable:
+            tableName: carts
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_carts
+              - column:
+                  name: customer_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: carts
+            columnNames: customer_id
+            constraintName: uq_carts_customer_id
+      rollback:
+        - dropTable:
+            tableName: carts
+
+  - changeSet:
+      id: 2026-07-09-002-create-cart-items
+      author: tuiop
+      labels: cart-service
+      changes:
+        - createTable:
+            tableName: cart_items
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_cart_items
+              - column:
+                  name: cart_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: product_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: quantity
+                  type: integer
+                  defaultValueNumeric: 1
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: cart_items
+            baseColumnNames: cart_id
+            referencedTableName: carts
+            referencedColumnNames: id
+            constraintName: fk_cart_items_cart_id
+            onDelete: CASCADE
+        - addUniqueConstraint:
+            tableName: cart_items
+            columnNames: cart_id, product_id
+            constraintName: uk_cart_items_cart_product
+        - createIndex:
+            tableName: cart_items
+            indexName: idx_cart_items_cart_id
+            columns:
+              - column:
+                  name: cart_id
+        - createIndex:
+            tableName: cart_items
+            indexName: idx_cart_items_product_id
+            columns:
+              - column:
+                  name: product_id
+        - sql:
+            sql: >-
+              ALTER TABLE cart_items
+              ADD CONSTRAINT chk_cart_items_quantity_positive
+              CHECK (quantity > 0)
+            rollback: ALTER TABLE cart_items DROP CONSTRAINT chk_cart_items_quantity_positive
+      rollback:
+        - dropTable:
+            tableName: cart_items

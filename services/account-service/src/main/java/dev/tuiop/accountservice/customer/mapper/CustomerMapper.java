@@ -10,17 +10,18 @@ import org.mapstruct.Mapping;
 public interface CustomerMapper {
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "version", ignore = true)
     @Mapping(target = "keycloakUserId", source = "keycloakUserId")
     @Mapping(target = "firstName", source = "request.firstName")
     @Mapping(target = "lastName", source = "request.lastName")
     @Mapping(target = "birthDate", source = "request.birthDate")
-    @Mapping(target = "email", source = "request.email")
-    @Mapping(target = "adress", source = "request.address")
+    @Mapping(target = "email", source = "email")
+    @Mapping(target = "address", source = "request.address")
     @Mapping(target = "enabled", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    Customer toEntity(String keycloakUserId, CustomerRegistrationRequest request);
+    Customer toEntity(String keycloakUserId, String email, CustomerRegistrationRequest request);
 
-    @Mapping(target = "address", source = "adress")
+    @Mapping(target = "address", source = "address")
     CustomerResponse toResponse(Customer customer);
 }

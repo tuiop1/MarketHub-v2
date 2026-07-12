@@ -4,6 +4,11 @@ target/
 !**/src/test/**/target/
 .kotlin
 
+
+.idea/
+**.idea/
+**/target/
+
 ### IntelliJ IDEA ###
 .idea/modules.xml
 .idea/jarRepositories.xml
@@ -34,6 +39,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Local Keycloak exports ###
+docker/keycloak/import/*.json
 
 ### Mac OS ###
 .DS_Store

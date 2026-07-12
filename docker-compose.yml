@@ -1,7 +1,8 @@
+name: markethub-v2-local
+
 services:
   postgres:
-    image: postgres:18.4-alpine
-    container_name: markethub-postgres
+    image: postgres:16.14-alpine3.24
     environment:
       POSTGRES_DB: markethub
       POSTGRES_USER: markethub
@@ -9,13 +10,25 @@ services:
       ACCOUNT_DB: account
       ACCOUNT_DB_USER: markethub
       ACCOUNT_DB_PASSWORD: markethub
+      CATALOG_DB: catalog
+      CATALOG_DB_USER: markethub
+      CATALOG_DB_PASSWORD: markethub
+      CART_DB: cart
+      CART_DB_USER: markethub
+      CART_DB_PASSWORD: markethub
+      ORDER_DB: orders
+      ORDER_DB_USER: markethub
+      ORDER_DB_PASSWORD: markethub
+      PAYMENT_DB: payment
+      PAYMENT_DB_USER: markethub
+      PAYMENT_DB_PASSWORD: markethub
       KEYCLOAK_DB: keycloak
       KEYCLOAK_DB_USER: keycloak
       KEYCLOAK_DB_PASSWORD: keycloak
     ports:
       - "5432:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql
+      - postgres-data:/var/lib/postgresql/data
       - ./docker/postgres/init-keycloak-db.sh:/docker-entrypoint-initdb.d/10-init-keycloak-db.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U markethub -d markethub"]
@@ -26,8 +39,7 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.6.4
-    container_name: markethub-keycloak
-    command: start-dev
+    command: start-dev --import-realm
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
@@ -49,6 +61,9 @@ services:
       timeout: 5s
       retries: 12
       start_period: 30s
+    volumes:
+      - ./docker/keycloak/import:/opt/keycloak/data/import:ro
 
 volumes:
   postgres-data:
+    name: markethub-v2-local_postgres-data

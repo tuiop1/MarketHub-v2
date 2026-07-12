@@ -1,0 +1,87 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2026-07-11-001-create-payments
+      author: tuiop
+      labels: payment-service
+      changes:
+        - createTable:
+            tableName: payments
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_payments
+              - column:
+                  name: order_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: customer_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: amount_cents
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(30)
+                  defaultValue: PENDING
+                  constraints:
+                    nullable: false
+              - column:
+                  name: version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: payments
+            columnNames: order_id
+            constraintName: uk_payments_order_id
+        - createIndex:
+            tableName: payments
+            indexName: idx_payments_customer_id
+            columns:
+              - column:
+                  name: customer_id
+        - createIndex:
+            tableName: payments
+            indexName: idx_payments_status
+            columns:
+              - column:
+                  name: status
+        - sql:
+            sql: >-
+              ALTER TABLE payments
+              ADD CONSTRAINT chk_payments_status
+              CHECK (status IN ('PENDING', 'SUCCEEDED', 'REFUNDED', 'FAILED'))
+            rollback: ALTER TABLE payments DROP CONSTRAINT chk_payments_status
+        - sql:
+            sql: >-
+              ALTER TABLE payments
+              ADD CONSTRAINT chk_payments_amount_cents_non_negative
+              CHECK (amount_cents >= 0)
+            rollback: ALTER TABLE payments DROP CONSTRAINT chk_payments_amount_cents_non_negative
+      rollback:
+        - dropTable:
+            tableName: payments

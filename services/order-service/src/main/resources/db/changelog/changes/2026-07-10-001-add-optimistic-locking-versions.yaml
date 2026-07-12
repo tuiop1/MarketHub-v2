@@ -1,0 +1,38 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2026-07-10-001-add-order-version
+      author: tuiop
+      labels: order-service
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: orders
+            columnName: version
+
+  - changeSet:
+      id: 2026-07-10-002-add-order-item-version
+      author: tuiop
+      labels: order-service
+      changes:
+        - addColumn:
+            tableName: order_items
+            columns:
+              - column:
+                  name: version
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: order_items
+            columnName: version

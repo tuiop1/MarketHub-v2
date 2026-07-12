@@ -1,0 +1,168 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2026-07-07-001-create-orders
+      author: tuiop
+      labels: order-service
+      changes:
+        - createTable:
+            tableName: orders
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_orders
+              - column:
+                  name: customer_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(30)
+                  defaultValue: CREATED
+                  constraints:
+                    nullable: false
+              - column:
+                  name: payment_status
+                  type: varchar(30)
+                  defaultValue: PENDING
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_price_cents
+                  type: bigint
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: timestamp with time zone
+                  defaultValueComputed: CURRENT_TIMESTAMP
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: orders
+            indexName: idx_orders_customer_id
+            columns:
+              - column:
+                  name: customer_id
+        - createIndex:
+            tableName: orders
+            indexName: idx_orders_status
+            columns:
+              - column:
+                  name: status
+        - createIndex:
+            tableName: orders
+            indexName: idx_orders_created_at
+            columns:
+              - column:
+                  name: created_at
+        - sql:
+            sql: >-
+              ALTER TABLE orders
+              ADD CONSTRAINT chk_orders_status
+              CHECK (status IN ('CREATED', 'CONFIRMED', 'COMPLETED', 'CANCELLED'))
+            rollback: ALTER TABLE orders DROP CONSTRAINT chk_orders_status
+        - sql:
+            sql: >-
+              ALTER TABLE orders
+              ADD CONSTRAINT chk_orders_payment_status
+              CHECK (payment_status IN ('PENDING', 'PAID', 'FAILED', 'REFUNDED'))
+            rollback: ALTER TABLE orders DROP CONSTRAINT chk_orders_payment_status
+
+  - changeSet:
+      id: 2026-07-07-002-create-order-items
+      author: tuiop
+      labels: order-service
+      changes:
+        - createTable:
+            tableName: order_items
+            columns:
+              - column:
+                  name: id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_order_items
+              - column:
+                  name: order_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: product_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: merchant_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+              - column:
+                  name: product_name_snapshot
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: merchant_name_snapshot
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: price_snapshot_cents
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: quantity
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total_price_snapshot_cents
+                  type: bigint
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: order_items
+            baseColumnNames: order_id
+            referencedTableName: orders
+            referencedColumnNames: id
+            constraintName: fk_order_items_order_id
+            onDelete: CASCADE
+        - createIndex:
+            tableName: order_items
+            indexName: idx_order_items_order_id
+            columns:
+              - column:
+                  name: order_id
+        - createIndex:
+            tableName: order_items
+            indexName: idx_order_items_product_id
+            columns:
+              - column:
+                  name: product_id
+        - createIndex:
+            tableName: order_items
+            indexName: idx_order_items_merchant_id
+            columns:
+              - column:
+                  name: merchant_id
+        - sql:
+            sql: >-
+              ALTER TABLE order_items
+              ADD CONSTRAINT chk_order_items_quantity_positive
+              CHECK (quantity > 0)
+            rollback: ALTER TABLE order_items DROP CONSTRAINT chk_order_items_quantity_positive

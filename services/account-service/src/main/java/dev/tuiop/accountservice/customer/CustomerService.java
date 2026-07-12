@@ -1,11 +1,13 @@
 package dev.tuiop.accountservice.customer;
 
 import dev.tuiop.accountservice.customer.dto.CustomerRegistrationRequest;
+import dev.tuiop.accountservice.customer.exceptions.CustomerAlreadyExistsException;
 import dev.tuiop.accountservice.customer.mapper.CustomerMapper;
-import dev.tuiop.accountservice.security.keycloak.KeycloakIdentityService;
-import jakarta.persistence.EntityNotFoundException;
+import dev.tuiop.accountservice.common.exceptions.EmailAlreadyTakenException;
+import dev.tuiop.accountservice.common.exceptions.ResourceNotFoundException;
+import dev.tuiop.accountservice.merchant.MerchantRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.parameters.P;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,49 +18,48 @@ import java.util.UUID;
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
+    private final MerchantRepository merchantRepository;
     private final CustomerMapper customerMapper;
-    private final KeycloakIdentityService keycloakIdentityService;
 
     @Transactional
     public Customer create(
             String keycloakUserId,
+            String email,
             CustomerRegistrationRequest request
     ) {
-        Customer customer = customerMapper.toEntity(keycloakUserId, request);
+
+        if (customerRepository.existsByEmailIgnoreCase(email) || merchantRepository.existsByEmailIgnoreCase(email)) {
+            throw new EmailAlreadyTakenException(email);
+        }
+
+        if (customerRepository.existsByKeycloakUserId(keycloakUserId)) {
+            throw new CustomerAlreadyExistsException();
+        }
+
+        Customer customer = customerMapper.toEntity(keycloakUserId, email, request);
 
         return customerRepository.save(customer);
     }
 
-
-    public void enable(UUID customerId){
-
-        Customer customer = customerRepository.findById(customerId)
-                .orElseThrow(() -> new EntityNotFoundException("Customer was not found with id:" + customerId));
-
-        if(customer.getEnabled()){
-            return;
-        }
-        try{
-
-            enableInDB(customer);
-
-
-        }
-        catch (RuntimeException exception){
-            throw exception;
-        }
-
-        keycloakIdentityService.addRealmRole(customer.getKeycloakUserId(),"CUSTOMER");
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @Transactional(readOnly = true)
+    public Customer getMe(String keycloakUserId) {
+        return getByKeycloakUserId(keycloakUserId);
     }
 
-    @Transactional
-    public void enableInDB(Customer customer){
+    @Transactional(readOnly = true)
+    public Customer getById(UUID customerId) {
+        return customerRepository.findById(customerId)
+                .orElseThrow(() -> new ResourceNotFoundException(Customer.class, customerId));
+    }
 
-
-
-        customer.setEnabled(true);
-
-        customerRepository.save(customer);
-
+    @Transactional(readOnly = true)
+    public Customer getByKeycloakUserId(String keycloakUserId) {
+        return customerRepository.findByKeycloakUserId(keycloakUserId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        Customer.class,
+                        "keycloakUserId",
+                        keycloakUserId
+                ));
     }
 }

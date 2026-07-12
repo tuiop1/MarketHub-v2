@@ -1,0 +1,102 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2026-07-10-003-collapse-order-status
+      author: tuiop
+      labels: order-service
+      changes:
+        - sql:
+            sql: ALTER TABLE orders DROP CONSTRAINT chk_orders_status
+            rollback: >-
+              ALTER TABLE orders
+              ADD CONSTRAINT chk_orders_status
+              CHECK (status IN ('CREATED', 'CONFIRMED', 'COMPLETED', 'CANCELLED'))
+        - sql:
+            sql: ALTER TABLE orders DROP CONSTRAINT chk_orders_payment_status
+            rollback: >-
+              ALTER TABLE orders
+              ADD CONSTRAINT chk_orders_payment_status
+              CHECK (payment_status IN ('PENDING', 'PAID', 'FAILED', 'REFUNDED'))
+        - sql:
+            sql: >-
+              UPDATE orders
+              SET status = CASE payment_status
+                  WHEN 'PENDING' THEN 'PENDING_PAYMENT'
+                  WHEN 'FAILED' THEN 'PAYMENT_FAILED'
+                  WHEN 'PAID' THEN 'PAID'
+                  WHEN 'REFUNDED' THEN 'REFUNDED'
+                  ELSE 'PENDING_PAYMENT'
+              END
+            rollback: >-
+              UPDATE orders
+              SET status = CASE status
+                  WHEN 'PENDING_PAYMENT' THEN 'CREATED'
+                  WHEN 'PAYMENT_FAILED' THEN 'CANCELLED'
+                  WHEN 'PAID' THEN 'COMPLETED'
+                  WHEN 'REFUNDED' THEN 'COMPLETED'
+                  ELSE 'CREATED'
+              END
+        - dropDefaultValue:
+            tableName: orders
+            columnName: status
+        - addDefaultValue:
+            tableName: orders
+            columnName: status
+            defaultValue: PENDING_PAYMENT
+        - dropColumn:
+            tableName: orders
+            columnName: payment_status
+        - sql:
+            sql: >-
+              ALTER TABLE orders
+              ADD CONSTRAINT chk_orders_status
+              CHECK (status IN ('PENDING_PAYMENT', 'PAID', 'REFUNDED', 'PAYMENT_FAILED'))
+            rollback: ALTER TABLE orders DROP CONSTRAINT chk_orders_status
+      rollback:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: payment_status
+                  type: varchar(30)
+                  defaultValue: PENDING
+                  constraints:
+                    nullable: false
+        - sql:
+            sql: >-
+              UPDATE orders
+              SET payment_status = CASE status
+                  WHEN 'PENDING_PAYMENT' THEN 'PENDING'
+                  WHEN 'PAYMENT_FAILED' THEN 'FAILED'
+                  WHEN 'PAID' THEN 'PAID'
+                  WHEN 'REFUNDED' THEN 'REFUNDED'
+                  ELSE 'PENDING'
+              END
+        - sql:
+            sql: ALTER TABLE orders DROP CONSTRAINT chk_orders_status
+        - dropDefaultValue:
+            tableName: orders
+            columnName: status
+        - addDefaultValue:
+            tableName: orders
+            columnName: status
+            defaultValue: CREATED
+        - sql:
+            sql: >-
+              UPDATE orders
+              SET status = CASE payment_status
+                  WHEN 'PENDING' THEN 'CREATED'
+                  WHEN 'FAILED' THEN 'CANCELLED'
+                  WHEN 'PAID' THEN 'COMPLETED'
+                  WHEN 'REFUNDED' THEN 'COMPLETED'
+                  ELSE 'CREATED'
+              END
+        - sql:
+            sql: >-
+              ALTER TABLE orders
+              ADD CONSTRAINT chk_orders_status
+              CHECK (status IN ('CREATED', 'CONFIRMED', 'COMPLETED', 'CANCELLED'))
+        - sql:
+            sql: >-
+              ALTER TABLE orders
+              ADD CONSTRAINT chk_orders_payment_status
+              CHECK (payment_status IN ('PENDING', 'PAID', 'FAILED', 'REFUNDED'))

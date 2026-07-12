@@ -12,13 +12,16 @@
 
 
   <modules>
-  <!--
-    <module>common-api</module><module>customer-service</module>
+    <module>services/account-service</module>
+    <module>libs/common-api</module>
 
-    <module>merchant-service</module>
-    <module>catalog-service</module>
-    <module>order-service</module>
-    -->
+    <module>services/catalog-service</module>
+    <module>services/order-service</module>
+    <module>services/cart-service</module>
+    <module>services/payment-service</module>
+    <!--
+      <module>merchant-service</module>
+      -->
   </modules>
 
   <properties>

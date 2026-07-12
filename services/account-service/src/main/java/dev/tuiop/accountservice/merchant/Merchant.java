@@ -23,6 +23,11 @@ public class Merchant {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
+    @Column(nullable = false, unique = true, updatable = false)
     private String keycloakUserId;
 
     @Column(name = "shop_name", nullable = false, unique = true)

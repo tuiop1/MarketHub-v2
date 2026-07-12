@@ -1,0 +1,54 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2026-07-07-001-normalize-customer-emails
+      author: tuiop
+      labels: account-service
+      changes:
+        - sql:
+            sql: UPDATE customers SET email = lower(trim(email))
+        - dropUniqueConstraint:
+            tableName: customers
+            constraintName: uq_customers_email
+        - createIndex:
+            tableName: customers
+            indexName: ux_customers_email_lower
+            unique: true
+            columns:
+              - column:
+                  name: lower(email)
+                  computed: true
+      rollback:
+        - dropIndex:
+            tableName: customers
+            indexName: ux_customers_email_lower
+        - addUniqueConstraint:
+            tableName: customers
+            columnNames: email
+            constraintName: uq_customers_email
+
+  - changeSet:
+      id: 2026-07-07-002-normalize-merchant-emails
+      author: tuiop
+      labels: account-service
+      changes:
+        - sql:
+            sql: UPDATE merchants SET email = lower(trim(email))
+        - dropUniqueConstraint:
+            tableName: merchants
+            constraintName: uq_merchants_email
+        - createIndex:
+            tableName: merchants
+            indexName: ux_merchants_email_lower
+            unique: true
+            columns:
+              - column:
+                  name: lower(email)
+                  computed: true
+      rollback:
+        - dropIndex:
+            tableName: merchants
+            indexName: ux_merchants_email_lower
+        - addUniqueConstraint:
+            tableName: merchants
+            columnNames: email
+            constraintName: uq_merchants_email

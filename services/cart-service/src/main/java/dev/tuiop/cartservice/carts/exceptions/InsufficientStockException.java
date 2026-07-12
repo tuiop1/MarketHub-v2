@@ -1,0 +1,14 @@
+package dev.tuiop.cartservice.carts.exceptions;
+
+import dev.tuiop.cartservice.common.exceptions.BusinessException;
+
+public class InsufficientStockException extends BusinessException {
+    public InsufficientStockException(String productName, int requestedQuantity, int availableQuantity) {
+        super(
+                "INSUFFICIENT_STOCK",
+                "Not enough stock for product '%s'. Requested: %d, available: %d"
+                        .formatted(productName, requestedQuantity, availableQuantity),
+                409
+        );
+    }
+}

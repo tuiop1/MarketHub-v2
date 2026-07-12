@@ -2,15 +2,18 @@ package dev.tuiop.accountservice.security.keycloak;
 
 
 import dev.tuiop.accountservice.security.keycloak.config.KeycloakAdminProperties;
+import dev.tuiop.accountservice.common.exceptions.EmailAlreadyTakenException;
 import jakarta.ws.rs.core.Response;
 import org.keycloak.admin.client.CreatedResponseUtil;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.RealmResource;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -34,7 +37,7 @@ public class KeycloakIdentityService {
     public String createUser(
             String email,
             String password,
-            String realmRole
+            RealmRole realmRole
 
     ){
         return createUser(email, password, null, null, realmRole);
@@ -45,7 +48,7 @@ public class KeycloakIdentityService {
             String password,
             String firstName,
             String lastName,
-            String realmRole
+            RealmRole realmRole
 
     ){
         RealmResource realm = keycloak.realm(realmName);
@@ -64,6 +67,10 @@ public class KeycloakIdentityService {
 
         try(Response response = realm.users().create(user)) {
             if (response.getStatus() != Response.Status.CREATED.getStatusCode()) {
+                if (response.getStatus() == Response.Status.CONFLICT.getStatusCode()) {
+                    throw new EmailAlreadyTakenException(email);
+                }
+
                 throw new IllegalStateException(
                         "Keycloak user creation failed with status " + response.getStatus()
                 );
@@ -77,7 +84,7 @@ public class KeycloakIdentityService {
         }
         try {
             RoleRepresentation role = realm.roles()
-                    .get(realmRole)
+                    .get(realmRole.toString())
                     .toRepresentation();
 
             realm.users()
@@ -112,7 +119,9 @@ public class KeycloakIdentityService {
     }
 
 
-    public void addRealmRole(String userId, String roleName) {
+    public void addRealmRole(String userId, RealmRole realmRole) {
+
+        String roleName = realmRole.name();
         RealmResource realm = keycloak.realm(realmName);
 
         RoleRepresentation role = realm.roles()
@@ -126,7 +135,8 @@ public class KeycloakIdentityService {
                 .add(List.of(role));
     }
 
-    public void removeRealmRole(String userId, String roleName) {
+    public void removeRealmRole(String userId, RealmRole realmRole) {
+        String roleName = realmRole.name();
         RealmResource realm = keycloak.realm(realmName);
 
         RoleRepresentation role = realm.roles()
@@ -140,6 +150,28 @@ public class KeycloakIdentityService {
                 .remove(List.of(role));
     }
 
+    public void enableUser(String keycloakUserId) {
+        UserResource userResource = keycloak.realm(realmName)
+                .users()
+                .get(keycloakUserId);
 
+        UserRepresentation user = userResource.toRepresentation();
+        user.setEnabled(true);
+        userResource.update(user);
+    }
+
+
+    public void disableUser(String keycloakUserId) {
+        UserResource userResource = keycloak.realm(realmName)
+                .users()
+                .get(keycloakUserId);
+
+        UserRepresentation user = userResource.toRepresentation();
+        user.setEnabled(false);
+        user.setNotBefore((int) Instant.now().getEpochSecond());
+        userResource.update(user);
+
+        userResource.logout();
+    }
 
 }

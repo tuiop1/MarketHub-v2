@@ -14,16 +14,16 @@ public class MerchantMapper {
                 .keycloakUserId(keycloakUserId)
                 .shopName(request.shopName().trim())
                 .description(request.description())
-                .email(email)
+                .email(email.trim())
                 .build();
     }
 
-    public Merchant toEntity(String keycloakUserId, MerchantRegistrationRequest request) {
+    public Merchant toEntity(String keycloakUserId, String email, MerchantRegistrationRequest request) {
         return Merchant.builder()
                 .keycloakUserId(keycloakUserId)
                 .shopName(request.shopName().trim())
                 .description(request.description())
-                .email(request.email())
+                .email(email)
                 .build();
     }
 
