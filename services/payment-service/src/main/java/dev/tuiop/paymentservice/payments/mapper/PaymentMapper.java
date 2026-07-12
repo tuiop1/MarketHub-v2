@@ -9,6 +9,6 @@ import org.mapstruct.Mapping;
 public interface PaymentMapper {
 
     @Mapping(target = "paymentId", source = "id")
-    @Mapping(target = "info", source = "failureReason")
+    @Mapping(target = "info", ignore = true)
     PaymentResultResponse toResultResponse(Payment payment);
 }

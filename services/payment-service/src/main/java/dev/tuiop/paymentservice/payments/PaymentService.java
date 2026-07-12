@@ -1,16 +1,18 @@
 package dev.tuiop.paymentservice.payments;
 
 
+import dev.tuiop.paymentservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.paymentservice.payments.dto.CreatePaymentRequest;
 
 import dev.tuiop.paymentservice.payments.enums.PaymentMethod;
 import dev.tuiop.paymentservice.payments.enums.PaymentStatus;
-import dev.tuiop.paymentservice.payments.exceptions.PaymentAlreadyExistsException;
+import dev.tuiop.paymentservice.payments.mapper.PaymentMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -18,6 +20,7 @@ public class PaymentService {
 
 
     private final PaymentRepository paymentRepository;
+    private final PaymentMapper paymentMapper;
 
 
 
@@ -35,12 +38,12 @@ public class PaymentService {
 
         PaymentMethod paymentMethod = request.paymentMethod();
         PaymentStatus paymentStatus;
-        String failureReason = "";
 
 
+        // qr payments are not supported
         if(paymentMethod ==  PaymentMethod.QR){
             paymentStatus = PaymentStatus.FAILED;
-            failureReason = "QR payments are not supported currently";
+
         }
         else{
             paymentStatus = PaymentStatus.SUCCEEDED;
@@ -50,7 +53,6 @@ public class PaymentService {
                 .amountCents(request.amountCents())
                 .method(paymentMethod)
                 .status(paymentStatus)
-                .failureReason(failureReason)
                 .orderId(request.orderId())
                 .customerId(request.customerId())
                 .build();
@@ -58,6 +60,16 @@ public class PaymentService {
         return paymentRepository.save(toSave);
 
 
+
+    }
+
+    @Transactional
+    public Payment cancelOrRefundByPaymentId(UUID paymentId){
+
+        Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new ResourceNotFoundException(Payment.class, paymentId));
+
+        payment.cancelOrRefund();
+        return payment;
 
     }
 }

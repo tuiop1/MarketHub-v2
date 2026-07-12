@@ -1,0 +1,30 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2026-07-12-001-remove-payment-failure-reason-and-update-status
+      author: tuiop
+      labels: payment-service
+      changes:
+        - dropColumn:
+            tableName: payments
+            columnName: failure_reason
+        - sql:
+            sql: ALTER TABLE payments DROP CONSTRAINT IF EXISTS chk_payments_status
+            rollback: ALTER TABLE payments DROP CONSTRAINT IF EXISTS chk_payments_status
+        - sql:
+            sql: >-
+              ALTER TABLE payments
+              ADD CONSTRAINT chk_payments_status
+              CHECK (status IN ('PENDING', 'SUCCEEDED', 'REFUNDED', 'CANCELLED', 'FAILED'))
+            rollback: >-
+              ALTER TABLE payments
+              ADD CONSTRAINT chk_payments_status
+              CHECK (status IN ('PENDING', 'SUCCEEDED', 'REFUNDED', 'FAILED'))
+      rollback:
+        - addColumn:
+            tableName: payments
+            columns:
+              - column:
+                  name: failure_reason
+                  type: varchar(255)
+        - sql:
+            sql: ALTER TABLE payments DROP CONSTRAINT IF EXISTS chk_payments_status

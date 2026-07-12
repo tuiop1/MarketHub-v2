@@ -28,7 +28,7 @@ public class StockReservationItem {
     private UUID merchantId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @Column(name = "reservation_id", nullable = false)
+    @JoinColumn(name = "reservation_id", nullable = false)
     private StockReservation reservation;
 
     @Column(name = "product_name", nullable = false, updatable = false)

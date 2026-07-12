@@ -22,11 +22,11 @@ public class PaymentController {
         Payment payment = paymentService.createPayment(request);
         return ResponseEntity.ok(paymentMapper.toResultResponse(payment));
          }
-    @PostMapping
+    @PostMapping("/{paymentId}/cancel-or-refund")
     public PaymentResultResponse cancelOrRefund(
             @PathVariable UUID paymentId
     ){
-        Payment payment = paymentService.cancelOrRefund(paymentId);
+        Payment payment = paymentService.cancelOrRefundByPaymentId(paymentId);
         return paymentMapper.toResultResponse(payment);
     }
 

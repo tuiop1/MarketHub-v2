@@ -21,4 +21,6 @@ public interface StockReservationRepository extends JpaRepository<StockReservati
            where sr.id = :id
 """)
     Optional<StockReservation> findByIdForUpdate(@Param("id") UUID id);
+
+
 }

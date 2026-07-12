@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record StockReservationResponse(
         UUID reservationId,
-        List<ProductResponse> products
+        StockReservationStatus status,
+        List<StockReservationItemResponse> items
 ) {
 }

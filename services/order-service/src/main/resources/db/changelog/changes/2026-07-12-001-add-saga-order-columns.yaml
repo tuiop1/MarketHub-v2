@@ -1,0 +1,42 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2026-07-12-001-add-saga-order-columns
+      author: tuiop
+      labels: order-service
+      changes:
+        - addColumn:
+            tableName: orders
+            columns:
+              - column:
+                  name: stock_reservation_id
+                  type: uuid
+              - column:
+                  name: payment_id
+                  type: uuid
+              - column:
+                  name: failure_reason
+                  type: varchar(1000)
+        - sql:
+            sql: ALTER TABLE orders DROP CONSTRAINT IF EXISTS chk_orders_status
+            rollback: ALTER TABLE orders DROP CONSTRAINT IF EXISTS chk_orders_status
+        - sql:
+            sql: >-
+              ALTER TABLE orders
+              ADD CONSTRAINT chk_orders_status
+              CHECK (status IN ('PENDING_PAYMENT', 'PAID', 'PAYMENT_FAILED', 'CANCELLED', 'COMPENSATION_FAILED'))
+            rollback: >-
+              ALTER TABLE orders
+              ADD CONSTRAINT chk_orders_status
+              CHECK (status IN ('PENDING_PAYMENT', 'PAID', 'REFUNDED', 'PAYMENT_FAILED'))
+      rollback:
+        - sql:
+            sql: ALTER TABLE orders DROP CONSTRAINT IF EXISTS chk_orders_status
+        - dropColumn:
+            tableName: orders
+            columnName: failure_reason
+        - dropColumn:
+            tableName: orders
+            columnName: payment_id
+        - dropColumn:
+            tableName: orders
+            columnName: stock_reservation_id

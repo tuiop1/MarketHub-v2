@@ -48,9 +48,6 @@ public class Payment {
     @Column(name = "payment_method", nullable = false)
     private PaymentMethod method;
 
-    @Column(name = "failure_reason")
-    private String failureReason;
-
     @Version
     private Long version;
 
@@ -94,25 +91,25 @@ public class Payment {
         status = PaymentStatus.SUCCEEDED;
     }
 
-    public void markFailed(String reason) {
+    public void markFailed() {
         if (status != PaymentStatus.PENDING) {
             throw new IllegalStateException("Only pending payment can fail");
         }
 
         status = PaymentStatus.FAILED;
-        failureReason = reason;
+
     }
 
-    public void cancelOrRefund(String reason) {
+    public void cancelOrRefund() {
         if (status == PaymentStatus.PENDING) {
             status = PaymentStatus.CANCELLED;
-            failureReason = reason;
+
             return;
         }
 
         if (status == PaymentStatus.SUCCEEDED) {
             status = PaymentStatus.REFUNDED;
-            failureReason = reason;
+
             
         }
 

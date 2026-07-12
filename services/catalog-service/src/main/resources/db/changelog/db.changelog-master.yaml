@@ -3,3 +3,5 @@ databaseChangeLog:
       file: db/changelog/changes/2026-07-07-001-create-catalog-schema.yaml
   - include:
       file: db/changelog/changes/2026-07-10-001-add-optimistic-locking-versions.yaml
+  - include:
+      file: db/changelog/changes/2026-07-12-001-create-stock-reservations.yaml

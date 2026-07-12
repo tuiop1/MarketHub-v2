@@ -2,8 +2,11 @@ package dev.tuiop.catalogservice.products.reservations;
 
 import dev.tuiop.catalogservice.products.Product;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -15,6 +18,8 @@ import java.util.UUID;
 @Table(name = "stock_reservations")
 @Builder
 @Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class StockReservation {
 
     @Id
