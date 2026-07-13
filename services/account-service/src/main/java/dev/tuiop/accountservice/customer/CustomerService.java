@@ -5,12 +5,15 @@ import dev.tuiop.accountservice.customer.exceptions.CustomerAlreadyExistsExcepti
 import dev.tuiop.accountservice.customer.mapper.CustomerMapper;
 import dev.tuiop.accountservice.common.exceptions.EmailAlreadyTakenException;
 import dev.tuiop.accountservice.common.exceptions.ResourceNotFoundException;
+import dev.tuiop.accountservice.kafka.AccountNotificationEventPublisher;
 import dev.tuiop.accountservice.merchant.MerchantRepository;
+import dev.tuiop.commonevents.CustomerRegisteredEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Service
@@ -20,6 +23,7 @@ public class CustomerService {
     private final CustomerRepository customerRepository;
     private final MerchantRepository merchantRepository;
     private final CustomerMapper customerMapper;
+    private final AccountNotificationEventPublisher eventPublisher;
 
     @Transactional
     public Customer create(
@@ -62,4 +66,6 @@ public class CustomerService {
                         keycloakUserId
                 ));
     }
+
+
 }

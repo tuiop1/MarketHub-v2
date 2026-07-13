@@ -1,9 +1,12 @@
 package dev.tuiop.orderservice.orders;
 
+import dev.tuiop.commonevents.OrderConfirmedEvent;
+import dev.tuiop.commonevents.OrderConfirmedItemSnapshot;
 import dev.tuiop.orderservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.orderservice.external.customers.AccountCustomerClient;
 import dev.tuiop.orderservice.external.customers.CustomerResponse;
 import dev.tuiop.orderservice.external.customers.exceptions.AccountServiceException;
+import dev.tuiop.orderservice.kafka.OrderNotificationEventPublisher;
 import dev.tuiop.orderservice.orders.dto.OrderResponse;
 import dev.tuiop.orderservice.orders.dto.PurchaseItemRequest;
 import dev.tuiop.orderservice.orders.dto.PurchaseRequest;
@@ -30,6 +33,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,7 +50,7 @@ public class OrderPurchaseSagaService {
     private final AccountCustomerClient accountCustomerClient;
     private final CatalogStockReservationClient catalogStockReservationClient;
     private final PaymentServiceClient paymentServiceClient;
-
+    private final OrderNotificationEventPublisher eventPublisher;
     public OrderResponse purchase(Jwt jwt, PurchaseRequest purchaseRequest) {
         UUID stockReservationId = UUID.randomUUID();
 
@@ -99,6 +103,8 @@ public class OrderPurchaseSagaService {
 
                 Order paidOrder = markPaid(order.getId());
 
+                publishOrderConfirmedEvent(order, customerResponse);
+
                 return orderMapper.toOrderResponse(paidOrder);
 
             }
@@ -113,6 +119,35 @@ public class OrderPurchaseSagaService {
         }
     }
 
+
+    private void publishOrderConfirmedEvent(Order order, CustomerResponse customer){
+
+        List<OrderConfirmedItemSnapshot> items = order.getOrderItems().stream()
+                        .map(item -> new OrderConfirmedItemSnapshot(
+                                item.getProductId(),
+                                item.getProductNameSnapshot(),
+                                item.getQuantity(),
+                                item.getPriceSnapshotCents(),
+                                item.getTotalPriceSnapshotCents()
+                        )).toList();
+
+        eventPublisher.publishOrderConfirmed(
+                new OrderConfirmedEvent(
+                        UUID.randomUUID(),
+                        order.getId(),
+                        order.getCustomerId(),
+                        customer.email(),
+                        customer.firstName(),
+                        order.getTotalPriceCents(),
+                        items,
+                        Instant.now()
+
+                )
+        );
+
+
+
+    }
 
     //compensation logic
 
