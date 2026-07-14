@@ -63,8 +63,13 @@ public class OrderService {
 
         Order order = orderPurchaseSagaService.purchase(jwt, new PurchaseRequest(items, paymentMethod));
 
+            try{
 
-            clearMyCart(jwt);
+                clearMyCart(jwt);
+            }
+            catch (Exception e ){
+                log.warn("Order created, but cart clearing failed: orderId={}", order.getId(), e);
+            }
 
 
 

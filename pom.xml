@@ -16,6 +16,7 @@
     <module>libs/common-api</module>
     <module>libs/common-events</module>
 
+    <module>services/gateway-service</module>
     <module>services/catalog-service</module>
     <module>services/order-service</module>
     <module>services/cart-service</module>
