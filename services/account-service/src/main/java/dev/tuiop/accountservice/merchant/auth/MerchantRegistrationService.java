@@ -71,7 +71,6 @@ public class MerchantRegistrationService {
     private void publishMerchantRegisteredEvent(Merchant merchant) {
         eventPublisher.publishMerchantRegistered(
                 new MerchantRegisteredEvent(
-                        UUID.randomUUID(),
                         merchant.getId(),
                         merchant.getEmail(),
                         merchant.getShopName(),

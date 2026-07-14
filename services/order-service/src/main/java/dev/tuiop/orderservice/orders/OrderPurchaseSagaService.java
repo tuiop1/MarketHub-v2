@@ -7,11 +7,9 @@ import dev.tuiop.orderservice.external.customers.AccountCustomerClient;
 import dev.tuiop.orderservice.external.customers.CustomerResponse;
 import dev.tuiop.orderservice.external.customers.exceptions.AccountServiceException;
 import dev.tuiop.orderservice.kafka.OrderNotificationEventPublisher;
-import dev.tuiop.orderservice.orders.dto.OrderResponse;
 import dev.tuiop.orderservice.orders.dto.PurchaseItemRequest;
 import dev.tuiop.orderservice.orders.dto.PurchaseRequest;
 import dev.tuiop.orderservice.orders.enums.OrderStatus;
-import dev.tuiop.orderservice.orders.mapper.OrderMapper;
 import dev.tuiop.orderservice.external.payments.CreatePaymentRequest;
 import dev.tuiop.orderservice.external.payments.PaymentMethod;
 import dev.tuiop.orderservice.external.payments.PaymentResultResponse;
@@ -46,12 +44,11 @@ import java.util.UUID;
 public class OrderPurchaseSagaService {
 
     private final OrderRepository orderRepository;
-    private final OrderMapper orderMapper;
     private final AccountCustomerClient accountCustomerClient;
     private final CatalogStockReservationClient catalogStockReservationClient;
     private final PaymentServiceClient paymentServiceClient;
     private final OrderNotificationEventPublisher eventPublisher;
-    public OrderResponse purchase(Jwt jwt, PurchaseRequest purchaseRequest) {
+    public Order purchase(Jwt jwt, PurchaseRequest purchaseRequest) {
         UUID stockReservationId = UUID.randomUUID();
 
         Map<UUID, Integer> quantitiesByProductId =
@@ -92,7 +89,7 @@ public class OrderPurchaseSagaService {
 
                 Order failedOrder = markPaymentFailed(order.getId(), payment.info());
 
-                return orderMapper.toOrderResponse(failedOrder);
+                return failedOrder;
             }
 
             if (payment.status() == PaymentStatus.SUCCEEDED) {
@@ -105,7 +102,7 @@ public class OrderPurchaseSagaService {
 
                 publishOrderConfirmedEvent(order, customerResponse);
 
-                return orderMapper.toOrderResponse(paidOrder);
+                return paidOrder;
 
             }
 
@@ -133,7 +130,6 @@ public class OrderPurchaseSagaService {
 
         eventPublisher.publishOrderConfirmed(
                 new OrderConfirmedEvent(
-                        UUID.randomUUID(),
                         order.getId(),
                         order.getCustomerId(),
                         customer.email(),

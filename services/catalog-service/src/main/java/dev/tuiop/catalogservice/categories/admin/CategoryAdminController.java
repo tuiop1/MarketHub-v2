@@ -4,6 +4,7 @@ import dev.tuiop.catalogservice.categories.CategoryService;
 import dev.tuiop.catalogservice.categories.dto.CategoryResponse;
 import dev.tuiop.catalogservice.categories.dto.CreateCategoryRequest;
 import dev.tuiop.catalogservice.categories.dto.UpdateCategoryRequest;
+import dev.tuiop.catalogservice.categories.mapper.CategoryMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,17 +30,18 @@ import java.util.UUID;
 public class CategoryAdminController {
 
     private final CategoryService categoryService;
+    private final CategoryMapper categoryMapper;
 
     @GetMapping
     public Page<CategoryResponse> getAllCategories(Pageable pageable) {
-        return categoryService.getAllCategories(pageable);
+        return categoryService.getAllCategories(pageable).map(categoryMapper::toResponse);
     }
 
     @PostMapping
     public ResponseEntity<CategoryResponse> createCategory(@Valid @RequestBody CreateCategoryRequest request) {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(categoryService.createCategory(request));
+                .body(categoryMapper.toResponse(categoryService.createCategory(request)));
     }
 
     @PutMapping("/{categoryId}")
@@ -47,16 +49,16 @@ public class CategoryAdminController {
             @PathVariable UUID categoryId,
             @Valid @RequestBody UpdateCategoryRequest request
     ) {
-        return ResponseEntity.ok(categoryService.updateCategory(categoryId, request));
+        return ResponseEntity.ok(categoryMapper.toResponse(categoryService.updateCategory(categoryId, request)));
     }
 
     @PatchMapping("/{categoryId}/enable")
     public ResponseEntity<CategoryResponse> enableCategory(@PathVariable UUID categoryId) {
-        return ResponseEntity.ok(categoryService.enableCategory(categoryId));
+        return ResponseEntity.ok(categoryMapper.toResponse(categoryService.enableCategory(categoryId)));
     }
 
     @PatchMapping("/{categoryId}/disable")
     public ResponseEntity<CategoryResponse> disableCategory(@PathVariable UUID categoryId) {
-        return ResponseEntity.ok(categoryService.disableCategory(categoryId));
+        return ResponseEntity.ok(categoryMapper.toResponse(categoryService.disableCategory(categoryId)));
     }
 }

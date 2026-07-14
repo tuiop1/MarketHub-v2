@@ -65,7 +65,6 @@ public class CustomerRegistrationService {
     private void publishCustomerRegisteredEvent(Customer customer){
         eventPublisher.publishCustomerRegistered(
                 new CustomerRegisteredEvent(
-                        UUID.randomUUID(),
                         customer.getId(),
                         customer.getEmail(),
                         customer.getFirstName(),

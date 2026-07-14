@@ -4,6 +4,8 @@ import dev.tuiop.commonevents.CustomerRegisteredEvent;
 import dev.tuiop.commonevents.MerchantRegisteredEvent;
 import dev.tuiop.commonevents.NotificationTopics;
 import dev.tuiop.commonevents.OrderConfirmedEvent;
+import dev.tuiop.notificationservice.email.EmailSender;
+import dev.tuiop.notificationservice.email.EmailTemplateFactory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -15,6 +17,9 @@ import org.springframework.stereotype.Component;
 public class NotificationEventConsumer {
 
 
+    private final EmailSender emailSender;
+
+    private final EmailTemplateFactory templateFactory;
 
     @KafkaListener(
             topics = NotificationTopics.CUSTOMER_REGISTERED,
@@ -22,8 +27,8 @@ public class NotificationEventConsumer {
     )
     public void consumeCustomerRegisteredEvent(CustomerRegisteredEvent event){
 
-        log.info("consumed customer registered event: {} ", event);
 
+        emailSender.sendHtml(event.email(), "Thank you for registration in MarketHub!", templateFactory.customerRegistered(event));
 
     }
 
@@ -33,8 +38,11 @@ public class NotificationEventConsumer {
     )
     public void consumeMerchantRegisteredEvent(MerchantRegisteredEvent event){
 
-        log.info("consumed merchant registered event: {} ", event);
-
+        emailSender.sendHtml(
+                event.email(),
+                "Thank you for registration in MarketHub as Merchant!",
+                templateFactory.merchantRegistered(event)
+        );
 
     }
 
@@ -45,8 +53,11 @@ public class NotificationEventConsumer {
             groupId = "notification-service"
     )
     public void consumeOrderConfirmedEvent(OrderConfirmedEvent event){
-
-        log.info("consumed order confirmed event: {} ", event);
+        emailSender.sendHtml(
+                event.customerEmail(),
+                "MarketHub order confirmation",
+                templateFactory.orderPaid(event)
+        );
 
 
     }

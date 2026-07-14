@@ -6,7 +6,6 @@ import dev.tuiop.paymentservice.payments.dto.CreatePaymentRequest;
 
 import dev.tuiop.paymentservice.payments.enums.PaymentMethod;
 import dev.tuiop.paymentservice.payments.enums.PaymentStatus;
-import dev.tuiop.paymentservice.payments.mapper.PaymentMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,7 +19,6 @@ public class PaymentService {
 
 
     private final PaymentRepository paymentRepository;
-    private final PaymentMapper paymentMapper;
 
 
 

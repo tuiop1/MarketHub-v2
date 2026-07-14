@@ -2,6 +2,7 @@ package dev.tuiop.catalogservice.products;
 
 import dev.tuiop.catalogservice.products.dto.ProductResponse;
 import dev.tuiop.catalogservice.products.dto.ProductPurchaseResponse;
+import dev.tuiop.catalogservice.products.mapper.ProductMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,15 +19,16 @@ import java.util.UUID;
 public class ProductController {
 
     private final ProductService productService;
+    private final ProductMapper productMapper;
 
     @GetMapping
     public ResponseEntity<Page<ProductResponse>> getProducts(Pageable pageable) {
-        return ResponseEntity.ok(productService.getPublicProducts(pageable));
+        return ResponseEntity.ok(productService.getPublicProducts(pageable).map(productMapper::toResponse));
     }
 
     @GetMapping("/{productId}")
     public ResponseEntity<ProductResponse> getProduct(@PathVariable UUID productId) {
-        return ResponseEntity.ok(productService.getPublicProduct(productId));
+        return ResponseEntity.ok(productMapper.toResponse(productService.getPublicProduct(productId)));
     }
 
     @PostMapping("/purchase/buyable")
