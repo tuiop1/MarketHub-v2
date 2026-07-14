@@ -2,6 +2,7 @@ package dev.tuiop.catalogservice.common;
 
 import dev.tuiop.catalogservice.common.exceptions.BusinessException;
 import dev.tuiop.catalogservice.common.exceptions.ResourceNotFoundException;
+import dev.tuiop.catalogservice.common.exceptions.TechnicalException;
 import dev.tuiop.commonapi.ApiError;
 import dev.tuiop.commonapi.ValidationApiError;
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,6 +40,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiError> handleBusinessException(
             BusinessException exception,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity
+                .status(exception.status())
+                .body(ApiError.of(
+                        exception.status(),
+                        exception.code(),
+                        exception.getMessage(),
+                        request.getRequestURI()
+                ));
+    }
+
+    @ExceptionHandler(TechnicalException.class)
+    public ResponseEntity<ApiError> handleTechnicalException(
+            TechnicalException exception,
             HttpServletRequest request
     ) {
         return ResponseEntity

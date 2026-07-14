@@ -1,8 +1,8 @@
 package dev.tuiop.orderservice.external.payments.exceptions;
 
-import dev.tuiop.orderservice.common.exceptions.BusinessException;
+import dev.tuiop.orderservice.common.exceptions.TechnicalException;
 
-public class PaymentServiceException extends BusinessException {
+public class PaymentServiceException extends TechnicalException {
 
     private PaymentServiceException(String code, String message, int status, Throwable cause) {
         super(code, message, status, cause);
