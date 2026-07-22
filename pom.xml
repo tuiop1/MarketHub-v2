@@ -22,6 +22,7 @@
     <module>services/cart-service</module>
     <module>services/payment-service</module>
     <module>services/notification-service</module>
+    <module>services/discovery-service</module>
   </modules>
 
   <properties>
