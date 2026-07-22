@@ -5,25 +5,25 @@ import dev.tuiop.accountservice.customer.exceptions.CustomerAlreadyExistsExcepti
 import dev.tuiop.accountservice.customer.mapper.CustomerMapper;
 import dev.tuiop.accountservice.common.exceptions.EmailAlreadyTakenException;
 import dev.tuiop.accountservice.common.exceptions.ResourceNotFoundException;
-import dev.tuiop.accountservice.kafka.AccountNotificationEventPublisher;
 import dev.tuiop.accountservice.merchant.MerchantRepository;
-import dev.tuiop.commonevents.CustomerRegisteredEvent;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import java.time.Instant;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
     private final MerchantRepository merchantRepository;
     private final CustomerMapper customerMapper;
-    private final AccountNotificationEventPublisher eventPublisher;
 
     @Transactional
     public Customer create(
@@ -42,7 +42,17 @@ public class CustomerService {
 
         Customer customer = customerMapper.toEntity(keycloakUserId, email, request);
 
-        return customerRepository.save(customer);
+        Customer savedCustomer = customerRepository.save(customer);
+
+        UUID customerId = savedCustomer.getId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                log.info("Customer profile created during registration: customerId={}", customerId);
+            }
+        });
+
+        return savedCustomer;
     }
 
     @PreAuthorize("hasRole('CUSTOMER')")

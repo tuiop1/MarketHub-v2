@@ -89,6 +89,13 @@ public class OrderPurchaseSagaService {
 
                 Order failedOrder = markPaymentFailed(order.getId(), payment.info());
 
+                log.info(
+                        "Order payment failed: orderId={}, paymentId={}, stockReservationId={}",
+                        failedOrder.getId(),
+                        payment.paymentId(),
+                        stockReservationId
+                );
+
                 return failedOrder;
             }
 
@@ -101,6 +108,14 @@ public class OrderPurchaseSagaService {
                 Order paidOrder = markPaid(order.getId());
 
                 publishOrderConfirmedEvent(order, customerResponse);
+
+                log.info(
+                        "Order paid: orderId={}, paymentId={}, stockReservationId={}, totalPriceCents={}",
+                        paidOrder.getId(),
+                        payment.paymentId(),
+                        stockReservationId,
+                        paidOrder.getTotalPriceCents()
+                );
 
                 return paidOrder;
 
@@ -196,6 +211,13 @@ public class OrderPurchaseSagaService {
                 }
                 else{
                     cancel(order.getId(), originalException.getMessage());
+
+                    log.warn(
+                            "Purchase saga compensated and order cancelled: orderId={}, paymentId={}, stockReservationId={}",
+                            order.getId(),
+                            payment != null ? payment.paymentId() : null,
+                            stockReservationId
+                    );
                 }
             } catch (Exception e) {
                 log.error(

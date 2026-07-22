@@ -30,6 +30,8 @@ public class NotificationEventConsumer {
 
         emailSender.sendHtml(event.email(), "Thank you for registration in MarketHub!", templateFactory.customerRegistered(event));
 
+        log.info("Customer registration email sent: customerId={}", event.customerId());
+
     }
 
     @KafkaListener(
@@ -44,6 +46,8 @@ public class NotificationEventConsumer {
                 templateFactory.merchantRegistered(event)
         );
 
+        log.info("Merchant registration email sent: merchantId={}", event.merchantId());
+
     }
 
 
@@ -57,6 +61,12 @@ public class NotificationEventConsumer {
                 event.customerEmail(),
                 "MarketHub order confirmation",
                 templateFactory.orderPaid(event)
+        );
+
+        log.info(
+                "Order confirmation email sent: orderId={}, customerId={}",
+                event.orderId(),
+                event.customerId()
         );
 
 

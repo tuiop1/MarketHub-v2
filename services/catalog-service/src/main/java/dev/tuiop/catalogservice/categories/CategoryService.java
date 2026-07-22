@@ -88,7 +88,7 @@ public class CategoryService {
     public Category disableCategory(UUID categoryId) {
         Category category = categoryRepository.findById(categoryId).orElseThrow(() -> new ResourceNotFoundException(Category.class, categoryId));
         category.disable();
-        log.warn(
+        log.info(
                 "Category disabled: categoryId={}, name={}",
                 category.getId(),
                 category.getName()

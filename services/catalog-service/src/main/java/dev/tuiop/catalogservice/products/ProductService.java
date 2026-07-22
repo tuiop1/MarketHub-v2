@@ -135,7 +135,7 @@ public class ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException(Product.class, productId));
 
         product.deactivate();
-        log.warn(
+        log.info(
                 "Product deactivated: productId={}, merchantId={}, name={}",
                 product.getId(),
                 merchantResponse.id(),

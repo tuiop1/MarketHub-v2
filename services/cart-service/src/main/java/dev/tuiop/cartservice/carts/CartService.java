@@ -155,6 +155,15 @@ public class CartService {
             }
 
             existingItem.get().increaseQuantity(quantity);
+
+            log.info(
+                    "Cart item quantity increased: cartItemId={}, cartId={}, productId={}, quantity={}",
+                    existingItem.get().getId(),
+                    myCart.getId(),
+                    productId,
+                    existingItem.get().getQuantity()
+            );
+
             return existingItem.get();
         }
 
