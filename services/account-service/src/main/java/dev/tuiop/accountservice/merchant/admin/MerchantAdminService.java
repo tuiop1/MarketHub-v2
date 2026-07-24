@@ -61,12 +61,13 @@ public class MerchantAdminService {
                         .orElseThrow(() -> new ResourceNotFoundException(Merchant.class, merchantId));
 
                 verify(merchantToVerify);
-                log.info(
-                        "Merchant verified by admin: merchantId={}, shopName={}",
-                        merchantToVerify.getId(),
-                        merchantToVerify.getShopName()
-                );
             });
+
+            log.info(
+                    "Merchant verified by admin: merchantId={}, shopName={}",
+                    merchant.getId(),
+                    merchant.getShopName()
+            );
         } catch (RuntimeException exception) {
             if (merchantRoleAdded) {
                 try {
@@ -119,12 +120,13 @@ public class MerchantAdminService {
                         .orElseThrow(() -> new ResourceNotFoundException(Merchant.class, merchantId));
 
                 reject(merchantToReject);
-                log.info(
-                        "Merchant rejected by admin: merchantId={}, shopName={}",
-                        merchantToReject.getId(),
-                        merchantToReject.getShopName()
-                );
             });
+
+            log.info(
+                    "Merchant rejected by admin: merchantId={}, shopName={}",
+                    merchant.getId(),
+                    merchant.getShopName()
+            );
         } catch (RuntimeException exception) {
             if (rejectedRoleAdded) {
                 try {
@@ -177,12 +179,13 @@ public class MerchantAdminService {
                         .orElseThrow(() -> new ResourceNotFoundException(Merchant.class, merchantId));
 
                 suspend(merchantToSuspend);
-                log.warn(
-                        "Merchant suspended by admin: merchantId={}, shopName={}",
-                        merchantToSuspend.getId(),
-                        merchantToSuspend.getShopName()
-                );
             });
+
+            log.info(
+                    "Merchant suspended by admin: merchantId={}, shopName={}",
+                    merchant.getId(),
+                    merchant.getShopName()
+            );
         } catch (RuntimeException exception) {
             if (userDisabled) {
                 try {

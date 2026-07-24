@@ -5,6 +5,7 @@ import dev.tuiop.accountservice.customer.Customer;
 import dev.tuiop.accountservice.customer.CustomerRepository;
 import dev.tuiop.accountservice.security.keycloak.KeycloakIdentityService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -13,6 +14,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @PreAuthorize("hasRole('ADMIN')")
 public class CustomerAdminService {
 
@@ -41,6 +43,8 @@ public class CustomerAdminService {
 
                 customerToEnable.enable();
             });
+
+            log.info("Customer enabled by admin: customerId={}", customerId);
 
         } catch (RuntimeException exception) {
 
@@ -78,6 +82,8 @@ public class CustomerAdminService {
 
                 customerToDisable.disable();
             });
+
+            log.info("Customer disabled by admin: customerId={}", customerId);
 
         } catch (RuntimeException exception) {
             if (userDisabled) {

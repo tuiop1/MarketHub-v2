@@ -4,6 +4,7 @@ package dev.tuiop.orderservice.orders;
 import dev.tuiop.orderservice.orders.dto.OrderResponse;
 import dev.tuiop.orderservice.orders.dto.PurchaseRequest;
 import dev.tuiop.orderservice.external.payments.PaymentMethod;
+import dev.tuiop.orderservice.orders.mapper.OrderMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class OrderController {
 
     private final OrderService orderService;
+    private final OrderMapper orderMapper;
 
     @PostMapping("/purchase")
     public ResponseEntity<OrderResponse> purchase(
@@ -28,7 +30,7 @@ public class OrderController {
             @Valid @RequestBody PurchaseRequest request
 
     ) {
-        return ResponseEntity.status(201).body(orderService.purchase(jwt, request));
+        return ResponseEntity.status(201).body(orderMapper.toOrderResponse(orderService.purchase(jwt, request)));
     }
 
     @PostMapping("/my-cart/purchase")
@@ -36,7 +38,7 @@ public class OrderController {
             @AuthenticationPrincipal Jwt jwt,
             @RequestBody PaymentMethod paymentMethod
             ) {
-        return ResponseEntity.status(201).body(orderService.purchaseMyCart(jwt, paymentMethod));
+        return ResponseEntity.status(201).body(orderMapper.toOrderResponse(orderService.purchaseMyCart(jwt, paymentMethod)));
     }
 
     @GetMapping("/me")
@@ -44,6 +46,6 @@ public class OrderController {
             @AuthenticationPrincipal Jwt jwt,
             Pageable pageable
     ) {
-        return orderService.getMyOrders(jwt, pageable);
+        return orderService.getMyOrders(jwt, pageable).map(orderMapper::toOrderResponse);
     }
 }

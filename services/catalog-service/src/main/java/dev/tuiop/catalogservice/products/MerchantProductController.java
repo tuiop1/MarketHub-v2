@@ -5,6 +5,7 @@ package dev.tuiop.catalogservice.products;
 import dev.tuiop.catalogservice.products.dto.CreateProductRequest;
 import dev.tuiop.catalogservice.products.dto.ProductResponse;
 import dev.tuiop.catalogservice.products.dto.UpdateProductRequest;
+import dev.tuiop.catalogservice.products.mapper.ProductMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,13 +24,14 @@ import java.util.UUID;
 public class MerchantProductController {
 
     private final ProductService productService;
+    private final ProductMapper productMapper;
 
     @PostMapping
     public ResponseEntity<ProductResponse> createProduct(
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody CreateProductRequest request
     ) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(productService.createMyProduct(jwt, request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(productMapper.toResponse(productService.createMyProduct(jwt, request)));
     }
 
     @GetMapping
@@ -37,7 +39,7 @@ public class MerchantProductController {
             @AuthenticationPrincipal Jwt jwt,
             Pageable pageable
     ) {
-        return ResponseEntity.ok( productService.getMyProducts(jwt, pageable));
+        return ResponseEntity.ok(productService.getMyProducts(jwt, pageable).map(productMapper::toResponse));
     }
 
     @GetMapping("/{productId}")
@@ -45,7 +47,7 @@ public class MerchantProductController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID productId
     ) {
-        return ResponseEntity.ok( productService.getMyProduct(jwt, productId));
+        return ResponseEntity.ok(productMapper.toResponse(productService.getMyProduct(jwt, productId)));
     }
 
     @PutMapping("/{productId}")
@@ -54,7 +56,7 @@ public class MerchantProductController {
             @PathVariable UUID productId,
             @Valid @RequestBody UpdateProductRequest request
     ) {
-        return ResponseEntity.ok(productService.updateMyProduct(jwt, productId, request));
+        return ResponseEntity.ok(productMapper.toResponse(productService.updateMyProduct(jwt, productId, request)));
     }
 
     @DeleteMapping("/{productId}")

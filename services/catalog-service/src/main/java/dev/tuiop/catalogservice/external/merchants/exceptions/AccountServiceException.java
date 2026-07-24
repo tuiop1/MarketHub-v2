@@ -1,8 +1,8 @@
 package dev.tuiop.catalogservice.external.merchants.exceptions;
 
-import dev.tuiop.catalogservice.common.exceptions.BusinessException;
+import dev.tuiop.catalogservice.common.exceptions.TechnicalException;
 
-public class AccountServiceException extends BusinessException {
+public class AccountServiceException extends TechnicalException {
 
     private AccountServiceException(String code, String message, int status, Throwable cause) {
         super(code, message, status, cause);

@@ -8,11 +8,9 @@ import dev.tuiop.orderservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.orderservice.external.customers.AccountCustomerClient;
 import dev.tuiop.orderservice.external.customers.CustomerResponse;
 import dev.tuiop.orderservice.external.customers.exceptions.AccountServiceException;
-import dev.tuiop.orderservice.orders.dto.OrderResponse;
 import dev.tuiop.orderservice.orders.dto.PurchaseItemRequest;
 import dev.tuiop.orderservice.orders.dto.PurchaseRequest;
 import dev.tuiop.orderservice.orders.exceptions.EmptyCartException;
-import dev.tuiop.orderservice.orders.mapper.OrderMapper;
 import dev.tuiop.orderservice.external.payments.PaymentMethod;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,19 +33,18 @@ import java.util.List;
 public class OrderService {
 
     private final OrderRepository orderRepository;
-    private final OrderMapper orderMapper;
     private final AccountCustomerClient accountCustomerClient;
     private final CartServiceClient cartServiceClient;
     private final OrderPurchaseSagaService orderPurchaseSagaService;
 
-    public OrderResponse purchase(
+    public Order purchase(
             Jwt jwt,
             PurchaseRequest request
     ) {
         return orderPurchaseSagaService.purchase(jwt, request);
     }
 
-    public OrderResponse purchaseMyCart(
+    public Order purchaseMyCart(
             Jwt jwt,
             PaymentMethod paymentMethod
     ) {
@@ -64,10 +61,15 @@ public class OrderService {
                 .map(item -> new PurchaseItemRequest(item.productId(), item.quantity()))
                 .toList();
 
-        OrderResponse order = orderPurchaseSagaService.purchase(jwt, new PurchaseRequest(items, paymentMethod));
+        Order order = orderPurchaseSagaService.purchase(jwt, new PurchaseRequest(items, paymentMethod));
 
+            try{
 
-            clearMyCart(jwt);
+                clearMyCart(jwt);
+            }
+            catch (Exception e ){
+                log.warn("Order created, but cart clearing failed: orderId={}", order.getId(), e);
+            }
 
 
 
@@ -78,13 +80,12 @@ public class OrderService {
 
 
     @Transactional(readOnly = true)
-    public Page<OrderResponse> getMyOrders(Jwt jwt, Pageable pageable) {
+    public Page<Order> getMyOrders(Jwt jwt, Pageable pageable) {
 
         CustomerResponse customerResponse = getMe(jwt);
 
 
-        return orderRepository.findByCustomerId(customerResponse.id(), pageable)
-                .map(orderMapper::toOrderResponse);
+        return orderRepository.findByCustomerId(customerResponse.id(), pageable);
     }
 
     private CartResponse getMyCart(Jwt jwt) {

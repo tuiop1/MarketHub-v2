@@ -6,8 +6,8 @@ import dev.tuiop.paymentservice.payments.dto.CreatePaymentRequest;
 
 import dev.tuiop.paymentservice.payments.enums.PaymentMethod;
 import dev.tuiop.paymentservice.payments.enums.PaymentStatus;
-import dev.tuiop.paymentservice.payments.mapper.PaymentMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,11 +16,11 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PaymentService {
 
 
     private final PaymentRepository paymentRepository;
-    private final PaymentMapper paymentMapper;
 
 
 
@@ -57,7 +57,19 @@ public class PaymentService {
                 .customerId(request.customerId())
                 .build();
 
-        return paymentRepository.save(toSave);
+        Payment savedPayment = paymentRepository.save(toSave);
+
+        log.info(
+                "Payment created: paymentId={}, orderId={}, customerId={}, status={}, method={}, amountCents={}",
+                savedPayment.getId(),
+                savedPayment.getOrderId(),
+                savedPayment.getCustomerId(),
+                savedPayment.getStatus(),
+                savedPayment.getMethod(),
+                savedPayment.getAmountCents()
+        );
+
+        return savedPayment;
 
 
 
@@ -68,7 +80,19 @@ public class PaymentService {
 
         Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new ResourceNotFoundException(Payment.class, paymentId));
 
+        PaymentStatus previousStatus = payment.getStatus();
         payment.cancelOrRefund();
+
+        if (previousStatus != payment.getStatus()) {
+            log.info(
+                    "Payment status changed by cancellation or refund: paymentId={}, orderId={}, previousStatus={}, status={}",
+                    payment.getId(),
+                    payment.getOrderId(),
+                    previousStatus,
+                    payment.getStatus()
+            );
+        }
+
         return payment;
 
     }

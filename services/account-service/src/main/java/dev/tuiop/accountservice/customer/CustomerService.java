@@ -7,14 +7,18 @@ import dev.tuiop.accountservice.common.exceptions.EmailAlreadyTakenException;
 import dev.tuiop.accountservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.accountservice.merchant.MerchantRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CustomerService {
 
     private final CustomerRepository customerRepository;
@@ -38,7 +42,17 @@ public class CustomerService {
 
         Customer customer = customerMapper.toEntity(keycloakUserId, email, request);
 
-        return customerRepository.save(customer);
+        Customer savedCustomer = customerRepository.save(customer);
+
+        UUID customerId = savedCustomer.getId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                log.info("Customer profile created during registration: customerId={}", customerId);
+            }
+        });
+
+        return savedCustomer;
     }
 
     @PreAuthorize("hasRole('CUSTOMER')")
@@ -62,4 +76,6 @@ public class CustomerService {
                         keycloakUserId
                 ));
     }
+
+
 }

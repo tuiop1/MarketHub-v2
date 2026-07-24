@@ -1,8 +1,8 @@
 package dev.tuiop.orderservice.external.carts.exceptions;
 
-import dev.tuiop.orderservice.common.exceptions.BusinessException;
+import dev.tuiop.orderservice.common.exceptions.TechnicalException;
 
-public class CartServiceException extends BusinessException {
+public class CartServiceException extends TechnicalException {
 
     private CartServiceException(String code, String message, int status, Throwable cause) {
         super(code, message, status, cause);

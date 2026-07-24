@@ -6,6 +6,7 @@ import dev.tuiop.catalogservice.products.ProductRepository;
 import dev.tuiop.catalogservice.products.reservations.dto.StockReservationItemRequest;
 import dev.tuiop.catalogservice.products.reservations.dto.StockReservationRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class StockReservationService {
 
     private final StockReservationRepository stockReservationRepository;
@@ -52,7 +54,15 @@ public class StockReservationService {
             reservation.addItem(product, quantity);
         }
 
-        return stockReservationRepository.save(reservation);
+        StockReservation savedReservation = stockReservationRepository.save(reservation);
+
+        log.info(
+                "Stock reserved: reservationId={}, productCount={}",
+                savedReservation.getId(),
+                savedReservation.getItems().size()
+        );
+
+        return savedReservation;
     }
 
     @Transactional
@@ -70,7 +80,16 @@ public class StockReservationService {
         Map<UUID, Product> productsById = products.stream()
                 .collect(Collectors.toMap(Product::getId, Function.identity()));
 
+        StockReservationStatus previousStatus = reservation.getStatus();
         reservation.release(productsById);
+
+        if (previousStatus != reservation.getStatus()) {
+            log.info(
+                    "Stock reservation released: reservationId={}, productCount={}",
+                    reservationId,
+                    reservation.getItems().size()
+            );
+        }
     }
 
     @Transactional
@@ -78,7 +97,16 @@ public class StockReservationService {
         StockReservation reservation = stockReservationRepository.findByIdForUpdate(reservationId)
                 .orElseThrow(() -> new ResourceNotFoundException(StockReservation.class, reservationId));
 
+        StockReservationStatus previousStatus = reservation.getStatus();
         reservation.commit();
+
+        if (previousStatus != reservation.getStatus()) {
+            log.info(
+                    "Stock reservation committed: reservationId={}, productCount={}",
+                    reservationId,
+                    reservation.getItems().size()
+            );
+        }
     }
 
     private Map<UUID, Integer> mergeAndValidateItems(List<StockReservationItemRequest> items) {

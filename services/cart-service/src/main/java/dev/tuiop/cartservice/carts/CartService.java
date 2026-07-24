@@ -2,8 +2,6 @@ package dev.tuiop.cartservice.carts;
 
 
 import dev.tuiop.cartservice.carts.dto.AddToCartRequest;
-import dev.tuiop.cartservice.carts.dto.CartItemResponse;
-import dev.tuiop.cartservice.carts.dto.CartResponse;
 import dev.tuiop.cartservice.carts.exceptions.InactiveCategoryException;
 import dev.tuiop.cartservice.carts.exceptions.InactiveProductException;
 import dev.tuiop.cartservice.carts.exceptions.InsufficientStockException;
@@ -14,8 +12,6 @@ import dev.tuiop.cartservice.carts.exceptions.SuspendedMerchantException;
 import dev.tuiop.cartservice.carts.exceptions.UserAlreadyOwnsCartException;
 import dev.tuiop.cartservice.carts.item.CartItem;
 import dev.tuiop.cartservice.carts.item.CartItemRepository;
-import dev.tuiop.cartservice.carts.mapper.CartItemMapper;
-import dev.tuiop.cartservice.carts.mapper.CartMapper;
 
 import dev.tuiop.cartservice.external.categories.CatalogCategoryClient;
 import dev.tuiop.cartservice.external.categories.CategoryResponse;
@@ -39,8 +35,6 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 
 import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 
 @Service
@@ -51,8 +45,6 @@ public class CartService {
 
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
-    private final CartMapper cartMapper;
-    private final CartItemMapper cartItemMapper;
     private final AccountCustomerClient accountCustomerClient;
     private final CatalogProductClient catalogProductClient;
     private final AccountMerchantClient accountMerchantClient;
@@ -83,23 +75,18 @@ public class CartService {
     }
 
     @Transactional(readOnly = true)
-    public CartResponse getMyCart(Jwt jwt) {
+    public Cart getMyCart(Jwt jwt) {
         CustomerResponse me = getMe(jwt);
 
-        Cart myCart = cartRepository.findCartByCustomerId(me.id()).orElseThrow(() -> new ResourceNotFoundException(Cart.class, "customerId", me.id()));
-
-        return toCartResponse(myCart);
+        return cartRepository.findCartByCustomerId(me.id()).orElseThrow(() -> new ResourceNotFoundException(Cart.class, "customerId", me.id()));
     }
 
 
     // public method for controller
     @Transactional
-    public CartItemResponse addProductToMyCart(AddToCartRequest request, Jwt jwt) {
+    public CartItem addProductToMyCart(AddToCartRequest request, Jwt jwt) {
 
-        CartItem cartItem = addProductToCart(request.productId(), request.quantity(), jwt);
-        ProductResponse product = getProductById(cartItem.getProductId());
-
-        return cartItemMapper.toCartItemResponse(cartItem, product);
+        return addProductToCart(request.productId(), request.quantity(), jwt);
     }
 
     @Transactional
@@ -121,24 +108,6 @@ public class CartService {
 
         log.info("Cleared cart id={} for customerId={}", cart.getId(), customer.id());
     }
-
-
-
-    private CartResponse toCartResponse(Cart cart) {
-        List<UUID> productIds = new ArrayList<>();
-        cart.getCartItems().forEach(cartItem -> productIds.add(cartItem.getProductId()));
-        List<ProductResponse> productsReturned = catalogProductClient.getBuyableProductsByIds(productIds);
-        Map<UUID, ProductResponse> products = productsReturned.stream().collect(Collectors.toMap((productResponse -> productResponse.id()), Function.identity()));
-
-        List<CartItemResponse> cartItems = cart.getCartItems()
-                .stream()
-                .map(item -> cartItemMapper.toCartItemResponse(item, products.get(item.getProductId()) ))
-                .toList();
-
-        return cartMapper.toCartResponse(cart, cartItems);
-    }
-
-
 
     // private method not for controller
     private CartItem addProductToCart(UUID productId, Integer quantity, Jwt jwt) {
@@ -186,6 +155,15 @@ public class CartService {
             }
 
             existingItem.get().increaseQuantity(quantity);
+
+            log.info(
+                    "Cart item quantity increased: cartItemId={}, cartId={}, productId={}, quantity={}",
+                    existingItem.get().getId(),
+                    myCart.getId(),
+                    productId,
+                    existingItem.get().getQuantity()
+            );
+
             return existingItem.get();
         }
 
@@ -246,7 +224,7 @@ public class CartService {
         return "Bearer " + jwt.getTokenValue();
     }
 
-    private ProductResponse getProductById(UUID productId) {
+    public ProductResponse getProductById(UUID productId) {
         try {
             return catalogProductClient.getProductById(productId);
         } catch (HttpClientErrorException.NotFound exception) {
@@ -259,6 +237,27 @@ public class CartService {
             throw CatalogServiceException.unavailable(exception);
         } catch (RestClientException exception) {
             log.warn("Catalog service client failed while getting product by id", exception);
+            throw CatalogServiceException.unavailable(exception);
+        }
+    }
+
+    public List<ProductResponse> getBuyableProductsByIds(Collection<UUID> productIds) {
+        if (productIds.isEmpty()) {
+            return List.of();
+        }
+
+        try {
+            return catalogProductClient.getBuyableProductsByIds(productIds);
+        } catch (HttpClientErrorException.NotFound exception) {
+            throw new ResourceNotFoundException(ProductResponse.class, "ids", productIds);
+        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
+            log.warn("Catalog service authorization failed while getting products by ids", exception);
+            throw CatalogServiceException.unauthorized(exception);
+        } catch (ResourceAccessException exception) {
+            log.warn("Catalog service request failed while getting products by ids", exception);
+            throw CatalogServiceException.unavailable(exception);
+        } catch (RestClientException exception) {
+            log.warn("Catalog service client failed while getting products by ids", exception);
             throw CatalogServiceException.unavailable(exception);
         }
     }

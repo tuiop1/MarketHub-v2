@@ -1,8 +1,8 @@
 package dev.tuiop.orderservice.external.products.exceptions;
 
-import dev.tuiop.orderservice.common.exceptions.BusinessException;
+import dev.tuiop.orderservice.common.exceptions.TechnicalException;
 
-public class CatalogServiceException extends BusinessException {
+public class CatalogServiceException extends TechnicalException {
 
     private CatalogServiceException(String code, String message, int status, Throwable cause) {
         super(code, message, status, cause);

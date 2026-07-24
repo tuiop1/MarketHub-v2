@@ -1,14 +1,15 @@
 package dev.tuiop.orderservice.orders;
 
+import dev.tuiop.commonevents.OrderConfirmedEvent;
+import dev.tuiop.commonevents.OrderConfirmedItemSnapshot;
 import dev.tuiop.orderservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.orderservice.external.customers.AccountCustomerClient;
 import dev.tuiop.orderservice.external.customers.CustomerResponse;
 import dev.tuiop.orderservice.external.customers.exceptions.AccountServiceException;
-import dev.tuiop.orderservice.orders.dto.OrderResponse;
+import dev.tuiop.orderservice.kafka.OrderNotificationEventPublisher;
 import dev.tuiop.orderservice.orders.dto.PurchaseItemRequest;
 import dev.tuiop.orderservice.orders.dto.PurchaseRequest;
 import dev.tuiop.orderservice.orders.enums.OrderStatus;
-import dev.tuiop.orderservice.orders.mapper.OrderMapper;
 import dev.tuiop.orderservice.external.payments.CreatePaymentRequest;
 import dev.tuiop.orderservice.external.payments.PaymentMethod;
 import dev.tuiop.orderservice.external.payments.PaymentResultResponse;
@@ -30,6 +31,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -42,12 +44,11 @@ import java.util.UUID;
 public class OrderPurchaseSagaService {
 
     private final OrderRepository orderRepository;
-    private final OrderMapper orderMapper;
     private final AccountCustomerClient accountCustomerClient;
     private final CatalogStockReservationClient catalogStockReservationClient;
     private final PaymentServiceClient paymentServiceClient;
-
-    public OrderResponse purchase(Jwt jwt, PurchaseRequest purchaseRequest) {
+    private final OrderNotificationEventPublisher eventPublisher;
+    public Order purchase(Jwt jwt, PurchaseRequest purchaseRequest) {
         UUID stockReservationId = UUID.randomUUID();
 
         Map<UUID, Integer> quantitiesByProductId =
@@ -88,7 +89,14 @@ public class OrderPurchaseSagaService {
 
                 Order failedOrder = markPaymentFailed(order.getId(), payment.info());
 
-                return orderMapper.toOrderResponse(failedOrder);
+                log.info(
+                        "Order payment failed: orderId={}, paymentId={}, stockReservationId={}",
+                        failedOrder.getId(),
+                        payment.paymentId(),
+                        stockReservationId
+                );
+
+                return failedOrder;
             }
 
             if (payment.status() == PaymentStatus.SUCCEEDED) {
@@ -99,7 +107,17 @@ public class OrderPurchaseSagaService {
 
                 Order paidOrder = markPaid(order.getId());
 
-                return orderMapper.toOrderResponse(paidOrder);
+                publishOrderConfirmedEvent(order, customerResponse);
+
+                log.info(
+                        "Order paid: orderId={}, paymentId={}, stockReservationId={}, totalPriceCents={}",
+                        paidOrder.getId(),
+                        payment.paymentId(),
+                        stockReservationId,
+                        paidOrder.getTotalPriceCents()
+                );
+
+                return paidOrder;
 
             }
 
@@ -113,6 +131,34 @@ public class OrderPurchaseSagaService {
         }
     }
 
+
+    private void publishOrderConfirmedEvent(Order order, CustomerResponse customer){
+
+        List<OrderConfirmedItemSnapshot> items = order.getOrderItems().stream()
+                        .map(item -> new OrderConfirmedItemSnapshot(
+                                item.getProductId(),
+                                item.getProductNameSnapshot(),
+                                item.getQuantity(),
+                                item.getPriceSnapshotCents(),
+                                item.getTotalPriceSnapshotCents()
+                        )).toList();
+
+        eventPublisher.publishOrderConfirmed(
+                new OrderConfirmedEvent(
+                        order.getId(),
+                        order.getCustomerId(),
+                        customer.email(),
+                        customer.firstName(),
+                        order.getTotalPriceCents(),
+                        items,
+                        Instant.now()
+
+                )
+        );
+
+
+
+    }
 
     //compensation logic
 
@@ -165,6 +211,13 @@ public class OrderPurchaseSagaService {
                 }
                 else{
                     cancel(order.getId(), originalException.getMessage());
+
+                    log.warn(
+                            "Purchase saga compensated and order cancelled: orderId={}, paymentId={}, stockReservationId={}",
+                            order.getId(),
+                            payment != null ? payment.paymentId() : null,
+                            stockReservationId
+                    );
                 }
             } catch (Exception e) {
                 log.error(

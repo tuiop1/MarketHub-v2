@@ -5,6 +5,7 @@ import dev.tuiop.commonapi.ApiError;
 import dev.tuiop.commonapi.ValidationApiError;
 import dev.tuiop.orderservice.common.exceptions.BusinessException;
 import dev.tuiop.orderservice.common.exceptions.ResourceNotFoundException;
+import dev.tuiop.orderservice.common.exceptions.TechnicalException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -40,6 +41,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiError> handleBusinessException(
             BusinessException exception,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity
+                .status(exception.status())
+                .body(ApiError.of(
+                        exception.status(),
+                        exception.code(),
+                        exception.getMessage(),
+                        request.getRequestURI()
+                ));
+    }
+
+    @ExceptionHandler(TechnicalException.class)
+    public ResponseEntity<ApiError> handleTechnicalException(
+            TechnicalException exception,
             HttpServletRequest request
     ) {
         return ResponseEntity
