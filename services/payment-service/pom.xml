@@ -44,6 +44,14 @@
 	</dependencyManagement>
 	<dependencies>
 		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.micrometer</groupId>
+			<artifactId>micrometer-registry-prometheus</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>dev.tuiop</groupId>
 			<artifactId>common-api</artifactId>
 			<version>1.0-SNAPSHOT</version>
@@ -125,6 +133,7 @@
 	</dependencies>
 
 	<build>
+		<finalName>payment-service</finalName>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>

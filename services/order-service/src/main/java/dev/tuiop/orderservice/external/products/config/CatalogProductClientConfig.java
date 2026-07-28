@@ -2,6 +2,7 @@ package dev.tuiop.orderservice.external.products.config;
 
 import dev.tuiop.orderservice.external.products.CatalogProductClient;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
@@ -13,7 +14,7 @@ public class CatalogProductClientConfig {
 
     @Bean
     public CatalogProductClient catalogProductClient(
-            RestClient.Builder restClientBuilder,
+            @Qualifier("loadBalancedRestClientBuilder") RestClient.Builder restClientBuilder,
             @Value("${services.catalog.url}") String catalogServiceUrl
     ) {
         RestClient restClient = restClientBuilder

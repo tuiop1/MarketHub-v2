@@ -1,0 +1,43 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+discovery.docker "markethub" {
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "5s"
+
+  filter {
+    name   = "label"
+    values = ["logging=alloy"]
+  }
+}
+
+discovery.relabel "markethub" {
+  targets = discovery.docker.markethub.targets
+
+  rule {
+    source_labels = [
+      "__meta_docker_container_label_com_docker_compose_service",
+    ]
+    target_label = "service"
+  }
+}
+
+loki.source.docker "markethub" {
+  host    = "unix:///var/run/docker.sock"
+  targets = discovery.relabel.markethub.output
+
+  labels = {
+    job         = "markethub",
+    environment = "local",
+  }
+
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

@@ -2,6 +2,7 @@ package dev.tuiop.orderservice.external.customers.config;
 
 import dev.tuiop.orderservice.external.customers.AccountCustomerClient;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
@@ -14,7 +15,7 @@ public class AccountCustomerClientConfig {
 
     @Bean
     public AccountCustomerClient accountCustomerClient(
-            RestClient.Builder restClientBuilder,
+            @Qualifier("loadBalancedRestClientBuilder") RestClient.Builder restClientBuilder,
             @Value("${services.account.url}") String accountMerchantUrl
     )
     {

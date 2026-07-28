@@ -2,6 +2,7 @@ package dev.tuiop.orderservice.external.payments.client.config;
 
 import dev.tuiop.orderservice.external.payments.client.PaymentServiceClient;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
@@ -13,7 +14,7 @@ public class PaymentServiceClientConfig {
 
     @Bean
     public PaymentServiceClient paymentServiceClient(
-            RestClient.Builder restClientBuilder,
+            @Qualifier("loadBalancedRestClientBuilder") RestClient.Builder restClientBuilder,
             @Value("${services.payment.url}") String paymentServiceUrl
     ) {
         RestClient restClient = restClientBuilder

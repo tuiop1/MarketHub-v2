@@ -31,7 +31,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./docker/postgres/init-keycloak-db.sh:/docker-entrypoint-initdb.d/10-init-keycloak-db.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U markethub -d markethub"]
+      test: [ "CMD-SHELL", "pg_isready -U markethub -d markethub" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -56,7 +56,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "timeout 5 bash -c '</dev/tcp/127.0.0.1/9000'"]
+      test: [ "CMD-SHELL", "timeout 5 bash -c '</dev/tcp/127.0.0.1/9000'" ]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -85,14 +85,299 @@ services:
     volumes:
       - kafka-data:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1" ]
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 30s
+
+  discovery-service:
+    image: markethub/discovery-service:local
+    build:
+      context: ./services/discovery-service
+      dockerfile: Dockerfile
+    labels:
+      logging: "alloy"
+    ports:
+      - "8761:8761"
+    restart: unless-stopped
+
+  account-service:
+    image: markethub/account-service:local
+    build:
+      context: ./services/account-service
+      dockerfile: Dockerfile
+    labels:
+      logging: "alloy"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/account
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KEYCLOAK_ISSUER_URI: http://localhost:8090/realms/markethub
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
+      KEYCLOAK_SERVER_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-pScyYiIgG3DwgjBSlsLhrdgIc6TthwOk}
+      EUREKA_URL: http://discovery-service:8761/eureka/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+    restart: unless-stopped
+
+  catalog-service:
+    image: markethub/catalog-service:local
+    build:
+      context: ./services/catalog-service
+      dockerfile: Dockerfile
+    labels:
+      logging: "alloy"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/catalog
+      KEYCLOAK_ISSUER_URI: http://localhost:8090/realms/markethub
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
+      EUREKA_URL: http://discovery-service:8761/eureka/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+      account-service:
+        condition: service_started
+    restart: unless-stopped
+
+  cart-service:
+    image: markethub/cart-service:local
+    build:
+      context: ./services/cart-service
+      dockerfile: Dockerfile
+    labels:
+      logging: "alloy"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cart
+      KEYCLOAK_ISSUER_URI: http://localhost:8090/realms/markethub
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
+      EUREKA_URL: http://discovery-service:8761/eureka/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+      account-service:
+        condition: service_started
+      catalog-service:
+        condition: service_started
+    restart: unless-stopped
+
+  payment-service:
+    image: markethub/payment-service:local
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile
+    labels:
+      logging: "alloy"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payment
+      KEYCLOAK_ISSUER_URI: http://localhost:8090/realms/markethub
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
+      EUREKA_URL: http://discovery-service:8761/eureka/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+    restart: unless-stopped
+
+  order-service:
+    image: markethub/order-service:local
+    build:
+      context: ./services/order-service
+      dockerfile: Dockerfile
+    labels:
+      logging: "alloy"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/orders
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KEYCLOAK_ISSUER_URI: http://localhost:8090/realms/markethub
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
+      EUREKA_URL: http://discovery-service:8761/eureka/
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+      account-service:
+        condition: service_started
+      catalog-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+    restart: unless-stopped
+
+  notification-service:
+    image: markethub/notification-service:local
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    labels:
+      logging: "alloy"
+    ports:
+      - "8086:8086"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-disabled}
+      SENDGRID_FROM_EMAIL: ${SENDGRID_FROM_EMAIL:-noreply@markethub.local}
+      SENDGRID_FROM_NAME: ${SENDGRID_FROM_NAME:-MarketHub}
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+
+  gateway-service:
+    image: markethub/gateway-service:local
+    build:
+      context: ./services/gateway-service
+      dockerfile: Dockerfile
+    labels:
+      logging: "alloy"
+    ports:
+      - "8080:8080"
+    environment:
+      KEYCLOAK_ISSUER_URI: http://localhost:8090/realms/markethub
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
+      EUREKA_URL: http://discovery-service:8761/eureka/
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+      account-service:
+        condition: service_started
+      catalog-service:
+        condition: service_started
+      cart-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+    restart: unless-stopped
+
+
+
+  prometheus:
+    image: prom/prometheus:v3.7.3
+    container_name: markethub-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.7.4
+    container_name: markethub-loki
+
+    command:
+      - -config.file=/etc/loki/loki-config.yaml
+
+    ports:
+      - "3100:3100"
+
+    volumes:
+      - ./observability/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki-data:/loki
+
+    restart: unless-stopped
+
+  alloy:
+    image: grafana/alloy:v1.18.0
+    container_name: markethub-alloy
+
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+
+    ports:
+      - "12345:12345"
+
+    volumes:
+      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy-data:/var/lib/alloy/data
+
+    depends_on:
+      - loki
+
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:13.1.1
+    container_name: markethub-grafana
+
+    ports:
+      - "3001:3000"
+
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+
+    depends_on:
+      - loki
+      - prometheus
+
+    restart: unless-stopped
+
+
+  log-generator:
+    image: alpine:3.23
+
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          echo '{"service":{"name":"log-generator"},"log":{"level":"INFO"},"message":"Alloy test log"}'
+          sleep 5
+        done
+
+    labels:
+      logging: "alloy"
 
 volumes:
   postgres-data:
     name: markethub-v2-local_postgres-data
   kafka-data:
     name: markethub-v2-local_kafka-data
+  loki-data:
+    name: markethub-v2-local_loki-data
+  alloy-data:
+    name: markethub-v2-local_alloy-data
+  grafana-data:
+    name: markethub-v2-local_grafana-data
+  prometheus-data:
+    name: markethub-v2-local_prometheus-data

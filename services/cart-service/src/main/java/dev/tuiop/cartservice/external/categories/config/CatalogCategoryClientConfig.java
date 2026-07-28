@@ -2,6 +2,7 @@ package dev.tuiop.cartservice.external.categories.config;
 
 import dev.tuiop.cartservice.external.categories.CatalogCategoryClient;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
@@ -13,7 +14,7 @@ public class CatalogCategoryClientConfig {
 
     @Bean
     public CatalogCategoryClient catalogCategoryClient(
-            RestClient.Builder restClientBuilder,
+            @Qualifier("loadBalancedRestClientBuilder") RestClient.Builder restClientBuilder,
             @Value("${services.catalog.url}") String catalogServiceUrl
     ) {
         RestClient restClient = restClientBuilder
