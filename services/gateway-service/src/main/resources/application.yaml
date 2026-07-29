@@ -2,6 +2,11 @@ spring:
   application:
     name: gateway-service
 
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+
   security:
     oauth2:
       resourceserver:
@@ -70,3 +75,11 @@ logging:
     ecs:
       service:
         environment: ${APP_ENVIRONMENT:local}
+
+
+
+app:
+  rate-limit:
+    enabled: true
+    request-limit: ${REQUEST_LIMIT:10}
+    window-size: ${WINDOW_SIZE:1m}

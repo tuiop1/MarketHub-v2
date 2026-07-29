@@ -6,8 +6,11 @@ import dev.tuiop.accountservice.customer.CustomerRepository;
 import dev.tuiop.accountservice.security.keycloak.KeycloakIdentityService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.UUID;
@@ -21,6 +24,11 @@ public class CustomerAdminService {
     private final CustomerRepository customerRepository;
     private final KeycloakIdentityService keycloakIdentityService;
     private final TransactionTemplate transactionTemplate;
+
+    @Transactional(readOnly = true)
+    public Page<Customer> getAll(Pageable pageable) {
+        return customerRepository.findAll(pageable);
+    }
 
     public void enable(UUID customerId) {
         Customer customer = customerRepository.findById(customerId)

@@ -1,8 +1,13 @@
 package dev.tuiop.accountservice.customer.admin;
 
+import dev.tuiop.accountservice.customer.dto.CustomerResponse;
+import dev.tuiop.accountservice.customer.mapper.CustomerMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +22,12 @@ import java.util.UUID;
 public class CustomerAdminController {
 
     private final CustomerAdminService customerAdminService;
+    private final CustomerMapper customerMapper;
+
+    @GetMapping
+    public Page<CustomerResponse> getCustomers(Pageable pageable) {
+        return customerAdminService.getAll(pageable).map(customerMapper::toResponse);
+    }
 
     @PatchMapping("/{customerId}/enable")
     public ResponseEntity<Void> enableCustomer(@PathVariable UUID customerId) {
