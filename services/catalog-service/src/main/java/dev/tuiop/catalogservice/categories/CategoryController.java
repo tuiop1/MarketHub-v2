@@ -1,7 +1,6 @@
 package dev.tuiop.catalogservice.categories;
 
 import dev.tuiop.catalogservice.categories.dto.CategoryResponse;
-import dev.tuiop.catalogservice.categories.mapper.CategoryMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,15 +17,14 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CategoryController {
     private final CategoryService categoryService;
-    private final CategoryMapper categoryMapper;
 
     @GetMapping
     public ResponseEntity<Page<CategoryResponse>> getActiveCategories(Pageable pageable) {
-        return ResponseEntity.ok(categoryService.getActiveCategories(pageable).map(categoryMapper::toResponse));
+        return ResponseEntity.ok(categoryService.getActiveCategories(pageable));
     }
 
     @GetMapping("/{categoryId}")
     public ResponseEntity<CategoryResponse> getCategory(@PathVariable UUID categoryId) {
-        return ResponseEntity.ok(categoryMapper.toResponse(categoryService.getCategory(categoryId)));
+        return ResponseEntity.ok(categoryService.getCategory(categoryId));
     }
 }

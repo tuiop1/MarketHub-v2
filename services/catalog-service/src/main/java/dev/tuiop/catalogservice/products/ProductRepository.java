@@ -40,6 +40,13 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     Page<Product> findByActiveTrueAndCategoryActiveTrue(Pageable pageable);
 
+    @Query("""
+            select product.id
+            from Product product
+            where product.category.id = :categoryId
+            """)
+    List<UUID> findIdsByCategoryId(@Param("categoryId") UUID categoryId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @EntityGraph(attributePaths = {"category"})
     @Query("""

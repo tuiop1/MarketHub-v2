@@ -10,9 +10,13 @@ import dev.tuiop.catalogservice.external.merchants.exceptions.MerchantInvalidSta
 import dev.tuiop.catalogservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.catalogservice.products.dto.CreateProductRequest;
 import dev.tuiop.catalogservice.products.dto.ProductPurchaseResponse;
+import dev.tuiop.catalogservice.products.dto.ProductResponse;
 import dev.tuiop.catalogservice.products.dto.UpdateProductRequest;
+import dev.tuiop.catalogservice.products.mapper.ProductMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -38,10 +42,11 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final AccountMerchantClient accountMerchantClient;
+    private final ProductMapper productMapper;
 
     @PreAuthorize("hasRole('MERCHANT')")
     @Transactional
-    public Product createMyProduct(Jwt jwt, CreateProductRequest request) {
+    public ProductResponse createMyProduct(Jwt jwt, CreateProductRequest request) {
 
         MerchantResponse merchantResponse = getMerchantByKeycloakUserId(jwt.getSubject());
 
@@ -68,29 +73,32 @@ public class ProductService {
                 savedProduct.getPriceCents(),
                 savedProduct.getStockQuantity()
         );
-        return savedProduct;
+        return productMapper.toResponse(savedProduct);
     }
 
     @PreAuthorize("hasRole('MERCHANT')")
     @Transactional(readOnly = true)
-    public Page<Product> getMyProducts(Jwt jwt, Pageable pageable) {
+    public Page<ProductResponse> getMyProducts(Jwt jwt, Pageable pageable) {
         MerchantResponse merchantResponse = getMerchantByKeycloakUserId(jwt.getSubject());
 
-        return productRepository.findByMerchantId(merchantResponse.id(), pageable);
+        return productRepository.findByMerchantId(merchantResponse.id(), pageable)
+                .map(productMapper::toResponse);
     }
 
     @PreAuthorize("hasRole('MERCHANT')")
     @Transactional(readOnly = true)
-    public Product getMyProduct(Jwt jwt, UUID productId) {
+    public ProductResponse getMyProduct(Jwt jwt, UUID productId) {
         MerchantResponse merchantResponse = getMerchantByKeycloakUserId(jwt.getSubject());
 
-        return productRepository.findByIdAndMerchantId(productId, merchantResponse.id())
+        Product product = productRepository.findByIdAndMerchantId(productId, merchantResponse.id())
                 .orElseThrow(() -> new ResourceNotFoundException(Product.class, productId));
+        return productMapper.toResponse(product);
     }
 
+    @CacheEvict(value = "product", key = "#productId.toString()")
     @PreAuthorize("hasRole('MERCHANT')")
     @Transactional
-    public Product updateMyProduct(
+    public ProductResponse updateMyProduct(
             Jwt jwt,
             UUID productId,
             UpdateProductRequest request
@@ -123,9 +131,10 @@ public class ProductService {
                 product.getStockQuantity(),
                 product.getActive()
         );
-        return product;
+        return productMapper.toResponse(product);
     }
 
+    @CacheEvict(value = "product", key = "#productId.toString()")
     @PreAuthorize("hasRole('MERCHANT')")
     @Transactional
     public void deleteMyProduct(Jwt jwt, UUID productId) {
@@ -144,13 +153,15 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public Page<Product> getPublicProducts(Pageable pageable) {
+    public Page<ProductResponse> getPublicProducts(Pageable pageable) {
 
-        return productRepository.findByActiveTrueAndCategoryActiveTrue(pageable);
+        return productRepository.findByActiveTrueAndCategoryActiveTrue(pageable)
+                .map(productMapper::toResponse);
     }
 
+    @Cacheable(value = "product", key = "#productId.toString()")
     @Transactional(readOnly = true)
-    public Product getPublicProduct(UUID productId) {
+    public ProductResponse getPublicProduct(UUID productId) {
         Product product = productRepository.findByIdAndActiveTrueAndCategoryActiveTrue(productId)
                 .orElseThrow(() -> new ResourceNotFoundException(Product.class, productId));
 
@@ -160,7 +171,7 @@ public class ProductService {
             throw new ResourceNotFoundException(Product.class, productId);
         }
 
-        return product;
+        return productMapper.toResponse(product);
     }
 
     @Transactional

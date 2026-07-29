@@ -91,6 +91,32 @@ services:
       retries: 12
       start_period: 30s
 
+  redis:
+    image: redis:8-alpine
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+  redis-insight:
+    image: redis/redisinsight:latest
+    ports:
+      - "5540:5540"
+    volumes:
+      - redis-insight-data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   discovery-service:
     image: markethub/discovery-service:local
     build:
@@ -98,6 +124,9 @@ services:
       dockerfile: Dockerfile
     labels:
       logging: "alloy"
+    environment:
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
     ports:
       - "8761:8761"
     restart: unless-stopped
@@ -117,6 +146,8 @@ services:
       KEYCLOAK_SERVER_URL: http://keycloak:8080
       KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-pScyYiIgG3DwgjBSlsLhrdgIc6TthwOk}
       EUREKA_URL: http://discovery-service:8761/eureka/
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
     depends_on:
       postgres:
         condition: service_healthy
@@ -137,11 +168,17 @@ services:
       logging: "alloy"
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/catalog
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
       KEYCLOAK_ISSUER_URI: http://localhost:8090/realms/markethub
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
       EUREKA_URL: http://discovery-service:8761/eureka/
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       keycloak:
         condition: service_healthy
@@ -163,6 +200,8 @@ services:
       KEYCLOAK_ISSUER_URI: http://localhost:8090/realms/markethub
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
       EUREKA_URL: http://discovery-service:8761/eureka/
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
     depends_on:
       postgres:
         condition: service_healthy
@@ -188,6 +227,8 @@ services:
       KEYCLOAK_ISSUER_URI: http://localhost:8090/realms/markethub
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
       EUREKA_URL: http://discovery-service:8761/eureka/
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
     depends_on:
       postgres:
         condition: service_healthy
@@ -210,6 +251,8 @@ services:
       KEYCLOAK_ISSUER_URI: http://localhost:8090/realms/markethub
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
       EUREKA_URL: http://discovery-service:8761/eureka/
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
     depends_on:
       postgres:
         condition: service_healthy
@@ -241,6 +284,8 @@ services:
       SENDGRID_API_KEY: ${SENDGRID_API_KEY:-disabled}
       SENDGRID_FROM_EMAIL: ${SENDGRID_FROM_EMAIL:-noreply@markethub.local}
       SENDGRID_FROM_NAME: ${SENDGRID_FROM_NAME:-MarketHub}
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
     depends_on:
       kafka:
         condition: service_healthy
@@ -259,6 +304,8 @@ services:
       KEYCLOAK_ISSUER_URI: http://localhost:8090/realms/markethub
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
       EUREKA_URL: http://discovery-service:8761/eureka/
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
     depends_on:
       keycloak:
         condition: service_healthy
@@ -273,6 +320,20 @@ services:
       order-service:
         condition: service_started
       payment-service:
+        condition: service_started
+    restart: unless-stopped
+
+  frontend:
+    image: markethub/frontend:local
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      gateway-service:
         condition: service_started
     restart: unless-stopped
 
@@ -349,30 +410,37 @@ services:
     depends_on:
       - loki
       - prometheus
+      - tempo
 
     restart: unless-stopped
 
 
-  log-generator:
-    image: alpine:3.23
 
+  tempo:
+    image: grafana/tempo:2.9.0
+    container_name: markethub-tempo
     command:
-      - sh
-      - -c
-      - |
-        while true; do
-          echo '{"service":{"name":"log-generator"},"log":{"level":"INFO"},"message":"Alloy test log"}'
-          sleep 5
-        done
+      - -config.file=/etc/tempo/tempo.yaml
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    restart: unless-stopped
 
-    labels:
-      logging: "alloy"
+
 
 volumes:
   postgres-data:
     name: markethub-v2-local_postgres-data
   kafka-data:
     name: markethub-v2-local_kafka-data
+  redis-data:
+    name: markethub-v2-local_redis-data
+  redis-insight-data:
+    name: markethub-v2-local_redis-insight-data
   loki-data:
     name: markethub-v2-local_loki-data
   alloy-data:
@@ -381,3 +449,5 @@ volumes:
     name: markethub-v2-local_grafana-data
   prometheus-data:
     name: markethub-v2-local_prometheus-data
+  tempo-data:
+    name: markethub-v2-local_tempo-data

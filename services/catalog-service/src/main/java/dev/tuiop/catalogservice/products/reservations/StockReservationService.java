@@ -1,5 +1,6 @@
 package dev.tuiop.catalogservice.products.reservations;
 
+import dev.tuiop.catalogservice.cache.ProductCacheInvalidator;
 import dev.tuiop.catalogservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.catalogservice.products.Product;
 import dev.tuiop.catalogservice.products.ProductRepository;
@@ -24,6 +25,7 @@ public class StockReservationService {
 
     private final StockReservationRepository stockReservationRepository;
     private final ProductRepository productRepository;
+    private final ProductCacheInvalidator productCacheInvalidator;
 
     @Transactional
     public StockReservation reserveStock(StockReservationRequest request) {
@@ -55,6 +57,7 @@ public class StockReservationService {
         }
 
         StockReservation savedReservation = stockReservationRepository.save(reservation);
+        productCacheInvalidator.evict(quantitiesByProductId.keySet());
 
         log.info(
                 "Stock reserved: reservationId={}, productCount={}",
@@ -84,6 +87,7 @@ public class StockReservationService {
         reservation.release(productsById);
 
         if (previousStatus != reservation.getStatus()) {
+            productCacheInvalidator.evict(productIds);
             log.info(
                     "Stock reservation released: reservationId={}, productCount={}",
                     reservationId,

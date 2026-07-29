@@ -43,5 +43,8 @@ build/
 ### Local Keycloak exports ###
 docker/keycloak/import/*.json
 
+### Local secrets ###
+.env
+
 ### Mac OS ###
 .DS_Store
