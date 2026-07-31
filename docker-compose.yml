@@ -113,12 +113,13 @@ services:
   discovery-service:
     image: markethub/discovery-service:local
     build:
-      context: ./services/discovery-service
+      context: ./backend/services/discovery-service
       dockerfile: Dockerfile
     labels:
       logging: "alloy"
     environment:
       MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-false}
       MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
     ports:
       - "8761:8761"
@@ -127,7 +128,7 @@ services:
   account-service:
     image: markethub/account-service:local
     build:
-      context: ./services/account-service
+      context: ./backend/services/account-service
       dockerfile: Dockerfile
     labels:
       logging: "alloy"
@@ -141,6 +142,7 @@ services:
       KEYCLOAK_ADMIN_CLIENT_SECRET: "${KEYCLOAK_ADMIN_CLIENT_SECRET:?KEYCLOAK_ADMIN_CLIENT_SECRET must be set}"
       EUREKA_URL: http://discovery-service:8761/eureka/
       MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-false}
       MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
     depends_on:
       postgres:
@@ -156,7 +158,7 @@ services:
   catalog-service:
     image: markethub/catalog-service:local
     build:
-      context: ./services/catalog-service
+      context: ./backend/services/catalog-service
       dockerfile: Dockerfile
     labels:
       logging: "alloy"
@@ -169,6 +171,7 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
       EUREKA_URL: http://discovery-service:8761/eureka/
       MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-false}
       MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
     depends_on:
       postgres:
@@ -186,7 +189,7 @@ services:
   cart-service:
     image: markethub/cart-service:local
     build:
-      context: ./services/cart-service
+      context: ./backend/services/cart-service
       dockerfile: Dockerfile
     labels:
       logging: "alloy"
@@ -197,6 +200,7 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
       EUREKA_URL: http://discovery-service:8761/eureka/
       MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-false}
       MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
     depends_on:
       postgres:
@@ -214,7 +218,7 @@ services:
   payment-service:
     image: markethub/payment-service:local
     build:
-      context: ./services/payment-service
+      context: ./backend/services/payment-service
       dockerfile: Dockerfile
     labels:
       logging: "alloy"
@@ -225,6 +229,7 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
       EUREKA_URL: http://discovery-service:8761/eureka/
       MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-false}
       MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
     depends_on:
       postgres:
@@ -238,7 +243,7 @@ services:
   order-service:
     image: markethub/order-service:local
     build:
-      context: ./services/order-service
+      context: ./backend/services/order-service
       dockerfile: Dockerfile
     labels:
       logging: "alloy"
@@ -250,6 +255,7 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
       EUREKA_URL: http://discovery-service:8761/eureka/
       MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-false}
       MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
     depends_on:
       postgres:
@@ -271,7 +277,7 @@ services:
   notification-service:
     image: markethub/notification-service:local
     build:
-      context: ./services/notification-service
+      context: ./backend/services/notification-service
       dockerfile: Dockerfile
     labels:
       logging: "alloy"
@@ -283,6 +289,7 @@ services:
       SENDGRID_FROM_EMAIL: ${SENDGRID_FROM_EMAIL:-noreply@markethub.local}
       SENDGRID_FROM_NAME: ${SENDGRID_FROM_NAME:-MarketHub}
       MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-false}
       MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
     depends_on:
       kafka:
@@ -292,7 +299,7 @@ services:
   gateway-service:
     image: markethub/gateway-service:local
     build:
-      context: ./services/gateway-service
+      context: ./backend/services/gateway-service
       dockerfile: Dockerfile
     labels:
       logging: "alloy"
@@ -305,6 +312,7 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
       EUREKA_URL: http://discovery-service:8761/eureka/
       MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-false}
       MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
     depends_on:
       redis:
@@ -342,6 +350,7 @@ services:
 
 
   prometheus:
+    profiles: [ "observability" ]
     image: prom/prometheus:v3.7.3
     container_name: markethub-prometheus
     command:
@@ -355,6 +364,7 @@ services:
     restart: "on-failure:3"
 
   loki:
+    profiles: [ "observability" ]
     image: grafana/loki:3.7.4
     container_name: markethub-loki
 
@@ -371,6 +381,7 @@ services:
     restart: "on-failure:3"
 
   alloy:
+    profiles: [ "observability" ]
     image: grafana/alloy:v1.18.0
     container_name: markethub-alloy
 
@@ -394,6 +405,7 @@ services:
     restart: "on-failure:3"
 
   grafana:
+    profiles: [ "observability" ]
     image: grafana/grafana:13.1.1
     container_name: markethub-grafana
 
@@ -419,6 +431,7 @@ services:
 
 
   tempo:
+    profiles: [ "observability" ]
     image: grafana/tempo:2.9.0
     container_name: markethub-tempo
     command:
