@@ -81,5 +81,5 @@ logging:
 app:
   rate-limit:
     enabled: true
-    request-limit: ${REQUEST_LIMIT:10}
+    request-limit: ${REQUEST_LIMIT:50}
     window-size: ${WINDOW_SIZE:1m}

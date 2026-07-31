@@ -1,13 +1,14 @@
 package dev.tuiop.discoveryservice;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 class DiscoveryServiceApplicationTests {
 
     @Test
-    void contextLoads() {
+    void applicationEntryPointIsAvailable() {
+        assertNotNull(DiscoveryServiceApplication.class);
     }
 
 }

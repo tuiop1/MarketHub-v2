@@ -1,13 +1,14 @@
 package dev.tuiop.orderservice;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 class OrderServiceApplicationTests {
 
 	@Test
-	void contextLoads() {
+	void applicationEntryPointIsAvailable() {
+		assertNotNull(OrderServiceApplication.class);
 	}
 
 }

@@ -46,5 +46,10 @@ docker/keycloak/import/*.json
 ### Local secrets ###
 .env
 
+### Frontend generated files ###
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
 ### Mac OS ###
 .DS_Store

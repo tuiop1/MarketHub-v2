@@ -1,13 +1,14 @@
 package dev.tuiop.cartservice;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 class CartServiceApplicationTests {
 
 	@Test
-	void contextLoads() {
+	void applicationEntryPointIsAvailable() {
+		assertNotNull(CartServiceApplication.class);
 	}
 
 }

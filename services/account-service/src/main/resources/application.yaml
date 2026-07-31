@@ -17,7 +17,7 @@ spring:
 
   datasource:
     username: markethub
-    password: markethub
+    password: ${SPRING_DATASOURCE_PASSWORD:markethub}
     url: jdbc:postgresql://localhost:5432/account
 
   jpa:
