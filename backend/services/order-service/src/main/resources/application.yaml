@@ -1,0 +1,71 @@
+spring:
+  application:
+    name: order-service
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+  http:
+    clients:
+      connect-timeout: 2s
+      read-timeout: 5s
+
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/markethub}
+
+  datasource:
+    username: markethub
+    password: ${SPRING_DATASOURCE_PASSWORD:markethub}
+    url: jdbc:postgresql://localhost:5432/orders
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  liquibase:
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+
+server:
+  port: 8083
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+
+services:
+  account:
+    url: ${ACCOUNT_SERVICE_URL:http://account-service}
+  catalog:
+    url: ${CATALOG_SERVICE_URL:http://catalog-service}
+  cart:
+    url: ${CART_SERVICE_URL:http://cart-service}
+  payment:
+    url: ${PAYMENT_SERVICE_URL:http://payment-service}
+
+logging:
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        environment: ${APP_ENVIRONMENT:local}

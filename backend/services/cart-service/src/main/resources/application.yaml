@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: cart-service
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/markethub}
+
+  datasource:
+    username: markethub
+    password: ${SPRING_DATASOURCE_PASSWORD:markethub}
+    url: jdbc:postgresql://localhost:5432/cart
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  liquibase:
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+
+server:
+  port: 8084
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+
+services:
+  account:
+    url: ${ACCOUNT_SERVICE_URL:http://account-service}
+  catalog:
+    url: ${CATALOG_SERVICE_URL:http://catalog-service}
+  order:
+    url: ${ORDER_SERVICE_URL:http://order-service}
+
+logging:
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        environment: ${APP_ENVIRONMENT:local}

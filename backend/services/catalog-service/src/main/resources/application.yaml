@@ -1,0 +1,69 @@
+spring:
+  application:
+    name: catalog-service
+
+  http:
+    clients:
+      connect-timeout: 2s
+      read-timeout: 5s
+
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+      password: ${SPRING_REDIS_PASSWORD:}
+      username: ${SPRING_REDIS_USERNAME:}
+      ssl:
+        enabled: ${SPRING_REDIS_SSL_ENABLED:false}
+        bundle: ${SPRING_REDIS_SSL_BUNDLE:}
+      database: 0
+
+
+  datasource:
+    username: markethub
+    password: ${SPRING_DATASOURCE_PASSWORD:markethub}
+    url: jdbc:postgresql://localhost:5432/catalog
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  liquibase:
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/markethub}
+
+services:
+  account:
+    url: ${ACCOUNT_SERVICE_URL:http://account-service}
+server:
+  port: 8082
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+
+logging:
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        environment: ${APP_ENVIRONMENT:local}

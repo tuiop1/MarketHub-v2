@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: notification-service
+
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: notification-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+      properties:
+        spring.json.trusted.packages: dev.tuiop.commonevents
+
+
+
+
+
+sendgrid:
+  api-key: ${SENDGRID_API_KEY}
+  from-email: ${SENDGRID_FROM_EMAIL}
+  from-name: ${SENDGRID_FROM_NAME:MarketHub}
+server:
+  port: 8086
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        environment: ${APP_ENVIRONMENT:local}

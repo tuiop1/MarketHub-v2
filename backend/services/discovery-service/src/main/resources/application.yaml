@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: discovery-service
+
+
+server:
+  port: 8761
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+
+logging:
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        environment: ${APP_ENVIRONMENT:local}

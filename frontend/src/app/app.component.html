@@ -1,0 +1,597 @@
+<header>
+  <button class="brand" (click)="show('shop')" aria-label="Go to MarketHub shop">
+    <span class="brand-mark">M</span>
+    <span><strong>MarketHub</strong><small>Commerce, connected.</small></span>
+  </button>
+
+  <nav aria-label="Primary navigation">
+    <button [class.active]="view() === 'shop'" (click)="show('shop')">Shop</button>
+    <button [class.active]="view() === 'merchants'" (click)="show('merchants')">Merchants</button>
+    @if (!auth.authenticated()) {
+      <button [class.active]="view() === 'register'" (click)="show('register')">Create account</button>
+      <button class="primary" (click)="auth.login()">Sign in</button>
+    } @else {
+      @if (auth.hasRole('ADMIN')) {
+        <button [class.active]="view() === 'admin'" (click)="show('admin')">Admin</button>
+      }
+      @if (auth.hasRole('MERCHANT')) {
+        <button [class.active]="view() === 'merchant'" (click)="show('merchant')">My products</button>
+      }
+      @if (auth.hasRole('CUSTOMER')) {
+        <button [class.active]="view() === 'cart'" (click)="show('cart')">
+          Cart <span class="count">{{ cart()?.cartItems?.length ?? 0 }}</span>
+        </button>
+        <button [class.active]="view() === 'orders'" (click)="show('orders')">Orders</button>
+      }
+      <button [class.active]="view() === 'account'" (click)="show('account')">{{ auth.displayName() }}</button>
+      <button class="quiet danger" (click)="auth.logout()">Sign out</button>
+    }
+  </nav>
+</header>
+
+<main>
+  @if (busy()) {
+    <div class="loading" role="status"><span></span> Updating MarketHub…</div>
+  }
+
+  @if (view() === 'shop') {
+    <section class="hero">
+      <div>
+        <span class="eyebrow">CURATED MARKETPLACE</span>
+        <h1>Good products from verified merchants.</h1>
+        <p>Browse the latest catalog, build a multi-item quick order, or save products to your cart.</p>
+      </div>
+      <div class="hero-stat"><strong>{{ productPage().totalElements }}</strong><span>active products</span></div>
+    </section>
+
+    <section class="toolbar surface">
+      <div>
+        <h2>Catalog</h2>
+        <p>{{ productPage().totalElements }} products available</p>
+      </div>
+      <label class="compact">Sort
+        <select [(ngModel)]="productSort" (change)="loadProducts(0)">
+          <option value="name,asc">Name A–Z</option>
+          <option value="name,desc">Name Z–A</option>
+          <option value="priceCents,asc">Lowest price</option>
+          <option value="priceCents,desc">Highest price</option>
+          <option value="createdAt,desc">Newest</option>
+        </select>
+      </label>
+    </section>
+
+    <div class="category-strip" aria-label="Available categories">
+      @for (category of categories(); track category.id) {
+        <button (click)="openCategory(category.id)" [attr.aria-label]="'View details for ' + category.name">
+          {{ category.name }}
+        </button>
+      }
+    </div>
+
+    <section class="product-grid">
+      @for (product of productPage().content; track product.id) {
+        <article class="product-card" [class.selected]="quickOrderSelected(product.id)">
+          <button class="card-main" (click)="openProduct(product.id)">
+            <span class="category">{{ categoryName(product.categoryId) }}</span>
+            <h3>{{ product.name }}</h3>
+            <p>{{ product.description || 'No description supplied.' }}</p>
+            <span class="stock" [class.low]="product.stockQuantity < 5">
+              {{ product.stockQuantity > 0 ? product.stockQuantity + ' available' : 'Out of stock' }}
+            </span>
+            <span class="detail-link">View details</span>
+          </button>
+          <div class="price-row">
+            <strong>{{ money(product.priceCents) }}</strong>
+            @if (auth.hasRole('CUSTOMER') && product.stockQuantity > 0) {
+              <label class="quantity">Qty
+                <input
+                  type="number"
+                  min="1"
+                  [max]="product.stockQuantity"
+                  [name]="'shop-qty-' + product.id"
+                  [(ngModel)]="productQuantities[product.id]">
+              </label>
+            }
+          </div>
+          @if (auth.hasRole('CUSTOMER') && product.stockQuantity > 0) {
+            <div class="actions">
+              <button (click)="addToCart(product)">Add to cart</button>
+              <button class="primary" (click)="buyNow(product)">Buy now</button>
+              <button
+                class="icon-button"
+                [class.active]="quickOrderSelected(product.id)"
+                (click)="toggleQuickOrder(product)"
+                [attr.aria-label]="quickOrderSelected(product.id) ? 'Remove from quick order' : 'Add to quick order'">
+                {{ quickOrderSelected(product.id) ? '✓' : '+' }}
+              </button>
+            </div>
+          }
+        </article>
+      } @empty {
+        <div class="empty-state"><strong>No active products</strong><p>The catalog is currently empty.</p></div>
+      }
+    </section>
+
+    <div class="pagination" aria-label="Product pagination">
+      <button [disabled]="productPage().first" (click)="loadProducts(productPage().number - 1)">Previous</button>
+      <span>Page {{ productPage().number + 1 }} of {{ productPage().totalPages || 1 }}</span>
+      <button [disabled]="productPage().last" (click)="loadProducts(productPage().number + 1)">Next</button>
+    </div>
+
+    @if (auth.hasRole('CUSTOMER') && selectedQuickOrderIds().length) {
+      <aside class="quick-order">
+        <div><strong>{{ selectedQuickOrderIds().length }} selected</strong><span>Purchase these products together</span></div>
+        <select [(ngModel)]="paymentMethod" aria-label="Quick order payment method">
+          <option value="CARD">Card</option>
+          <option value="GOOGLE_PAY">Google Pay</option>
+          <option value="QR">QR payment</option>
+        </select>
+        <button class="primary" (click)="purchaseQuickOrder()">Place quick order</button>
+        <button class="quiet" (click)="selectedQuickOrderIds.set([])">Clear</button>
+      </aside>
+    }
+
+    @if (selectedProduct(); as product) {
+      <div class="overlay" role="presentation" (click)="closeProduct()">
+        <article class="detail-panel" role="dialog" aria-modal="true" [attr.aria-label]="product.name + ' details'" (click)="$event.stopPropagation()">
+          <button class="close" (click)="closeProduct()" aria-label="Close product details">×</button>
+          <span class="eyebrow">{{ categoryName(product.categoryId) }}</span>
+          <h2>{{ product.name }}</h2>
+          <p class="description">{{ product.description || 'No description supplied.' }}</p>
+          <dl>
+            <div><dt>Price</dt><dd>{{ money(product.priceCents) }}</dd></div>
+            <div><dt>Availability</dt><dd>{{ product.stockQuantity }} in stock</dd></div>
+            <div><dt>Product ID</dt><dd><code>{{ product.id }}</code></dd></div>
+          </dl>
+          <p class="cache-hint">This view uses the single-product endpoint. Its first request stores the product in Redis for 30 minutes; later requests reuse it.</p>
+          <button class="link-button" (click)="show('merchants'); openMerchant(product.merchantId)">View merchant</button>
+          @if (auth.hasRole('CUSTOMER') && product.stockQuantity > 0) {
+            <div class="detail-purchase">
+              <input type="number" min="1" [max]="product.stockQuantity" [(ngModel)]="productQuantities[product.id]">
+              <button (click)="addToCart(product)">Add to cart</button>
+              <button class="primary" (click)="buyNow(product)">Buy now</button>
+            </div>
+          }
+        </article>
+      </div>
+    }
+
+    @if (selectedCategory(); as category) {
+      <div class="overlay" role="presentation" (click)="closeCategory()">
+        <article class="detail-panel" role="dialog" aria-modal="true" [attr.aria-label]="category.name + ' details'" (click)="$event.stopPropagation()">
+          <button class="close" (click)="closeCategory()" aria-label="Close category details">×</button>
+          <span class="eyebrow">CATEGORY</span>
+          <h2>{{ category.name }}</h2>
+          <p class="description">{{ category.description || 'No description supplied.' }}</p>
+          <dl>
+            <div><dt>Status</dt><dd>{{ category.active ? 'Active' : 'Disabled' }}</dd></div>
+            <div><dt>Category ID</dt><dd><code>{{ category.id }}</code></dd></div>
+          </dl>
+          <p class="cache-hint">This view uses the single-category endpoint. Its first request stores the category in Redis for 30 minutes; later requests reuse it.</p>
+        </article>
+      </div>
+    }
+  }
+
+  @if (view() === 'merchants') {
+    <section class="page-heading">
+      <span class="eyebrow">VERIFIED SELLERS</span>
+      <h1>Meet the merchants.</h1>
+      <p>Every shop listed here has passed MarketHub verification.</p>
+    </section>
+    <section class="toolbar surface">
+      <div><h2>Merchant directory</h2><p>{{ merchantDirectoryPage().totalElements }} verified shops</p></div>
+      <label class="compact">Sort
+        <select [(ngModel)]="merchantSort" (change)="loadMerchantDirectory(0)">
+          <option value="shopName,asc">Shop A–Z</option>
+          <option value="shopName,desc">Shop Z–A</option>
+          <option value="verifiedAt,desc">Recently verified</option>
+        </select>
+      </label>
+    </section>
+    <section class="merchant-grid">
+      @for (merchant of merchantDirectoryPage().content; track merchant.id) {
+        <article class="merchant-card">
+          <div class="avatar">{{ merchant.shopName.charAt(0).toUpperCase() }}</div>
+          <span class="badge success">Verified</span>
+          <h3>{{ merchant.shopName }}</h3>
+          <p>{{ merchant.description || 'Independent MarketHub merchant.' }}</p>
+          <button (click)="openMerchant(merchant.id)">View shop details</button>
+        </article>
+      } @empty {
+        <div class="empty-state"><strong>No verified merchants</strong></div>
+      }
+    </section>
+    <div class="pagination">
+      <button [disabled]="merchantDirectoryPage().first" (click)="loadMerchantDirectory(merchantDirectoryPage().number - 1)">Previous</button>
+      <span>Page {{ merchantDirectoryPage().number + 1 }} of {{ merchantDirectoryPage().totalPages || 1 }}</span>
+      <button [disabled]="merchantDirectoryPage().last" (click)="loadMerchantDirectory(merchantDirectoryPage().number + 1)">Next</button>
+    </div>
+    @if (selectedMerchant(); as merchant) {
+      <section class="surface detail-inline">
+        <button class="close" (click)="selectedMerchant.set(null)">×</button>
+        <div class="avatar large">{{ merchant.shopName.charAt(0).toUpperCase() }}</div>
+        <div>
+          <span class="badge success">{{ merchant.status }}</span>
+          <h2>{{ merchant.shopName }}</h2>
+          <p>{{ merchant.description || 'No merchant description.' }}</p>
+          <p class="muted">{{ merchant.email }}</p>
+          @if (merchant.verifiedAt) { <small>Verified {{ merchant.verifiedAt | date:'mediumDate' }}</small> }
+        </div>
+      </section>
+    }
+  }
+
+  @if (view() === 'register') {
+    <section class="page-heading registration-heading">
+      <span class="eyebrow">JOIN THE MARKETPLACE</span>
+      <h1>Choose your MarketHub account.</h1>
+      <p>Start with a ready-made example, add your own email, and adjust anything you like.</p>
+    </section>
+    <div class="registration-grid">
+      <section class="surface account-card">
+        <div class="account-card-header">
+          <span class="account-type">CUSTOMER</span>
+          <button class="example-button" type="button" (click)="useAnotherCustomerExample()">Try another example</button>
+          <h2>Customer account</h2>
+          <p>Shop, manage a cart, and track orders.</p>
+        </div>
+        <form class="account-form" (ngSubmit)="registerCustomer()">
+          <fieldset class="form-section">
+            <legend>Personal details</legend>
+            <div class="field-grid">
+              <label>First name<input name="cf" autocomplete="given-name" [(ngModel)]="customerForm.firstName" required></label>
+              <label>Last name<input name="cl" autocomplete="family-name" [(ngModel)]="customerForm.lastName" required></label>
+              <label class="full">Birth date<input name="cb" type="date" autocomplete="bday" [(ngModel)]="customerForm.birthDate" required></label>
+            </div>
+          </fieldset>
+          <fieldset class="form-section">
+            <legend>Login details</legend>
+            <div class="field-grid">
+              <label class="full">Email
+                <input name="ce" type="email" autocomplete="email" placeholder="you@example.com" [(ngModel)]="customerForm.email" required>
+              </label>
+              <label class="full">Password
+                <input name="cp" type="password" autocomplete="new-password" minlength="8" [(ngModel)]="customerForm.password" required>
+                <span class="field-note">Use at least 8 characters.</span>
+              </label>
+            </div>
+          </fieldset>
+          <fieldset class="form-section">
+            <legend>Delivery address</legend>
+            <div class="field-grid">
+              <label>Country<input name="cc" autocomplete="country-name" [(ngModel)]="customerForm.country" required></label>
+              <label>City<input name="cci" autocomplete="address-level2" [(ngModel)]="customerForm.city" required></label>
+              <label class="full">Street<input name="cs" autocomplete="street-address" [(ngModel)]="customerForm.street" required></label>
+              <label>Postal code<input name="cpc" autocomplete="postal-code" [(ngModel)]="customerForm.postalCode" required></label>
+              <label>Apartment<input name="ca" autocomplete="address-line2" [(ngModel)]="customerForm.apartment"></label>
+            </div>
+          </fieldset>
+          <div class="account-form-footer">
+            <span>Email stays empty so every account remains yours.</span>
+            <button class="primary" type="submit">Create customer account</button>
+          </div>
+        </form>
+      </section>
+      <section class="surface account-card">
+        <div class="account-card-header merchant">
+          <span class="account-type">MERCHANT</span>
+          <button class="example-button" type="button" (click)="useAnotherMerchantExample()">Try another example</button>
+          <h2>Merchant account</h2>
+          <p>Create a shop and sell after admin verification.</p>
+        </div>
+        <form class="account-form" (ngSubmit)="registerMerchant()">
+          <fieldset class="form-section">
+            <legend>Owner details</legend>
+            <div class="field-grid">
+              <label>First name<input name="mf" autocomplete="given-name" [(ngModel)]="merchantForm.firstName" required></label>
+              <label>Last name<input name="ml" autocomplete="family-name" [(ngModel)]="merchantForm.lastName" required></label>
+            </div>
+          </fieldset>
+          <fieldset class="form-section">
+            <legend>Login details</legend>
+            <div class="field-grid">
+              <label class="full">Email
+                <input name="me" type="email" autocomplete="email" placeholder="you@example.com" [(ngModel)]="merchantForm.email" required>
+              </label>
+              <label class="full">Password
+                <input name="mp" type="password" autocomplete="new-password" minlength="8" [(ngModel)]="merchantForm.password" required>
+                <span class="field-note">Use at least 8 characters.</span>
+              </label>
+            </div>
+          </fieldset>
+          <fieldset class="form-section">
+            <legend>Shop profile</legend>
+            <div class="field-grid">
+              <label class="full">Shop name<input name="ms" autocomplete="organization" [(ngModel)]="merchantForm.shopName" required></label>
+              <label class="full">Description<textarea name="md" [(ngModel)]="merchantForm.description"></textarea></label>
+            </div>
+          </fieldset>
+          <div class="account-form-footer">
+            <span>After verification, sign in again to receive the MERCHANT role.</span>
+            <button class="primary" type="submit">Create merchant account</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  }
+
+  @if (view() === 'admin' && auth.hasRole('ADMIN')) {
+    <section class="page-heading">
+      <span class="eyebrow">OPERATIONS</span>
+      <h1>Marketplace administration.</h1>
+    </section>
+    <div class="tabs" role="tablist">
+      <button [class.active]="adminSection() === 'categories'" (click)="selectAdminSection('categories')">Categories</button>
+      <button [class.active]="adminSection() === 'pending-merchants'" (click)="selectAdminSection('pending-merchants')">Pending merchants</button>
+      <button [class.active]="adminSection() === 'verified-merchants'" (click)="selectAdminSection('verified-merchants')">Verified merchants</button>
+    </div>
+
+    @if (adminSection() === 'categories') {
+      <div class="admin-layout">
+        <section class="surface sticky-form">
+          <div class="form-title-row">
+            <h2>{{ editingCategoryId ? 'Edit category' : 'New category' }}</h2>
+            @if (!editingCategoryId) {
+              <button class="example-button" type="button" (click)="useAnotherCategoryExample()">Another example</button>
+            }
+          </div>
+          <form (ngSubmit)="saveCategory()">
+            <label>Name<input name="categoryName" [(ngModel)]="categoryForm.name" required maxlength="255"></label>
+            <label>Description<textarea name="categoryDescription" [(ngModel)]="categoryForm.description" maxlength="1000"></textarea></label>
+            <div class="actions">
+              <button class="primary" type="submit">{{ editingCategoryId ? 'Save changes' : 'Create category' }}</button>
+              @if (editingCategoryId) { <button type="button" (click)="cancelCategoryEdit()">Cancel</button> }
+            </div>
+          </form>
+        </section>
+        <section class="surface">
+          <div class="section-title"><div><h2>All categories</h2><p>{{ adminCategoryPage().totalElements }} total</p></div><button (click)="loadAdminCategories(adminCategoryPage().number)">Refresh</button></div>
+          <div class="data-list">
+            @for (category of adminCategoryPage().content; track category.id) {
+              <article>
+                <div><span class="badge" [class.success]="category.active">{{ category.active ? 'Active' : 'Disabled' }}</span><h3>{{ category.name }}</h3><p>{{ category.description || 'No description' }}</p></div>
+                <div class="actions">
+                  <button (click)="editCategory(category)">Edit</button>
+                  <button [class.danger]="category.active" (click)="toggleCategory(category)">{{ category.active ? 'Disable' : 'Enable' }}</button>
+                </div>
+              </article>
+            } @empty { <div class="empty-state">No categories found.</div> }
+          </div>
+          <div class="pagination">
+            <button [disabled]="adminCategoryPage().first" (click)="loadAdminCategories(adminCategoryPage().number - 1)">Previous</button>
+            <span>Page {{ adminCategoryPage().number + 1 }} of {{ adminCategoryPage().totalPages || 1 }}</span>
+            <button [disabled]="adminCategoryPage().last" (click)="loadAdminCategories(adminCategoryPage().number + 1)">Next</button>
+          </div>
+        </section>
+      </div>
+    }
+
+    @if (adminSection() === 'pending-merchants') {
+      <section class="surface">
+        <div class="section-title"><div><h2>Pending verification</h2><p>{{ pendingMerchantPage().totalElements }} applications</p></div><button (click)="loadPendingMerchants(pendingMerchantPage().number)">Refresh</button></div>
+        <div class="data-list">
+          @for (merchant of pendingMerchantPage().content; track merchant.id) {
+            <article>
+              <div><span class="badge">{{ merchant.status }}</span><h3>{{ merchant.shopName }}</h3><p>{{ merchant.description || 'No description' }}</p><small>{{ merchant.email }}</small></div>
+              <div class="actions">
+                <button class="primary" (click)="merchantAction(merchant.id, 'verify')">Verify</button>
+                <button class="danger" (click)="merchantAction(merchant.id, 'reject')">Reject</button>
+              </div>
+            </article>
+          } @empty { <div class="empty-state">No merchant applications are waiting.</div> }
+        </div>
+        <div class="pagination">
+          <button [disabled]="pendingMerchantPage().first" (click)="loadPendingMerchants(pendingMerchantPage().number - 1)">Previous</button>
+          <span>Page {{ pendingMerchantPage().number + 1 }} of {{ pendingMerchantPage().totalPages || 1 }}</span>
+          <button [disabled]="pendingMerchantPage().last" (click)="loadPendingMerchants(pendingMerchantPage().number + 1)">Next</button>
+        </div>
+      </section>
+    }
+
+    @if (adminSection() === 'verified-merchants') {
+      <section class="surface">
+        <div class="section-title"><div><h2>Verified merchants</h2><p>{{ verifiedMerchantPage().totalElements }} active shops</p></div><button (click)="loadVerifiedMerchants(verifiedMerchantPage().number)">Refresh</button></div>
+        <div class="data-list">
+          @for (merchant of verifiedMerchantPage().content; track merchant.id) {
+            <article>
+              <div><span class="badge success">{{ merchant.status }}</span><h3>{{ merchant.shopName }}</h3><p>{{ merchant.description || 'No description' }}</p><small>{{ merchant.email }}</small></div>
+              <button class="danger" (click)="merchantAction(merchant.id, 'disable')">Suspend</button>
+            </article>
+          } @empty { <div class="empty-state">No verified merchants found.</div> }
+        </div>
+        <div class="pagination">
+          <button [disabled]="verifiedMerchantPage().first" (click)="loadVerifiedMerchants(verifiedMerchantPage().number - 1)">Previous</button>
+          <span>Page {{ verifiedMerchantPage().number + 1 }} of {{ verifiedMerchantPage().totalPages || 1 }}</span>
+          <button [disabled]="verifiedMerchantPage().last" (click)="loadVerifiedMerchants(verifiedMerchantPage().number + 1)">Next</button>
+        </div>
+      </section>
+    }
+
+  }
+
+  @if (view() === 'merchant' && auth.hasRole('MERCHANT')) {
+    <section class="page-heading">
+      <span class="eyebrow">MERCHANT WORKSPACE</span>
+      <h1>Manage your catalog.</h1>
+    </section>
+    <div class="admin-layout">
+      <section class="surface sticky-form">
+        <div class="form-title-row">
+          <h2>{{ editingProductId ? 'Edit product' : 'Create product' }}</h2>
+          @if (!editingProductId) {
+            <button class="example-button" type="button" (click)="useAnotherProductExample()">Another example</button>
+          }
+        </div>
+        <form (ngSubmit)="saveProduct()">
+          <label>Name<input name="productName" [(ngModel)]="productForm.name" required maxlength="255"></label>
+          <label>Description<textarea name="productDescription" [(ngModel)]="productForm.description" maxlength="5000"></textarea></label>
+          <div class="form-row">
+            <label>Price in cents<input name="productPrice" type="number" min="1" [(ngModel)]="productForm.priceCents" required></label>
+            <label>Stock<input name="productStock" type="number" min="0" [(ngModel)]="productForm.stockQuantity" required></label>
+          </div>
+          <label>Category
+            <select name="productCategory" [(ngModel)]="productForm.categoryId" required>
+              @for (category of categories(); track category.id) {
+                <option [value]="category.id">{{ category.name }}</option>
+              }
+            </select>
+          </label>
+          @if (editingProductId) {
+            <label class="check"><input name="productActive" type="checkbox" [(ngModel)]="productForm.active"> Product is active</label>
+          }
+          <div class="actions">
+            <button class="primary" type="submit">{{ editingProductId ? 'Save product' : 'Create product' }}</button>
+            @if (editingProductId) { <button type="button" (click)="cancelProductEdit()">Cancel</button> }
+          </div>
+        </form>
+      </section>
+      <section class="surface">
+        <div class="section-title"><div><h2>My products</h2><p>{{ merchantProductPage().totalElements }} products</p></div><button (click)="loadMerchantProducts(merchantProductPage().number)">Refresh</button></div>
+        <div class="data-list">
+          @for (product of merchantProductPage().content; track product.id) {
+            <article>
+              <div><span class="badge" [class.success]="product.active">{{ product.active ? 'Active' : 'Inactive' }}</span><h3>{{ product.name }}</h3><p>{{ money(product.priceCents) }} · {{ product.stockQuantity }} in stock · {{ categoryName(product.categoryId) }}</p></div>
+              <div class="actions">
+                <button (click)="editProduct(product)">Edit</button>
+                <button (click)="toggleProduct(product)">{{ product.active ? 'Deactivate' : 'Activate' }}</button>
+                <button class="danger" (click)="deleteProduct(product.id)">Delete</button>
+              </div>
+            </article>
+          } @empty { <div class="empty-state">You have not created any products.</div> }
+        </div>
+        <div class="pagination">
+          <button [disabled]="merchantProductPage().first" (click)="loadMerchantProducts(merchantProductPage().number - 1)">Previous</button>
+          <span>Page {{ merchantProductPage().number + 1 }} of {{ merchantProductPage().totalPages || 1 }}</span>
+          <button [disabled]="merchantProductPage().last" (click)="loadMerchantProducts(merchantProductPage().number + 1)">Next</button>
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (view() === 'cart' && auth.hasRole('CUSTOMER')) {
+    <section class="page-heading">
+      <span class="eyebrow">YOUR SELECTION</span>
+      <h1>Shopping cart.</h1>
+    </section>
+    <section class="surface">
+      <div class="section-title"><div><h2>{{ cart()?.cartItems?.length ?? 0 }} cart items</h2><p>Quantities and prices are revalidated at checkout.</p></div><button (click)="loadCart()">Refresh</button></div>
+      <div class="cart-list">
+        @for (item of cart()?.cartItems ?? []; track item.id) {
+          <article>
+            <div><h3>{{ item.productName }}</h3><p>{{ money(item.priceCents) }} each · {{ item.stockQuantity }} currently available</p></div>
+            <div class="cart-quantity">
+              <span>Qty {{ item.quantity }}</span>
+              <button [disabled]="item.quantity >= item.stockQuantity" (click)="addOneToCart(item)">+1</button>
+            </div>
+            <strong>{{ money(item.totalPriceCents) }}</strong>
+            <button class="danger" (click)="removeCartItem(item.id)">Remove</button>
+          </article>
+        } @empty {
+          <div class="empty-state"><strong>Your cart is empty.</strong><p>Browse the catalog to add products.</p><button (click)="show('shop')">Continue shopping</button></div>
+        }
+      </div>
+      @if (cart()?.cartItems?.length) {
+        <div class="checkout">
+          <div><span>Order total</span><strong>{{ money(cart()?.totalPriceCents) }}</strong></div>
+          <label class="compact">Payment
+            <select [(ngModel)]="paymentMethod"><option value="CARD">Card</option><option value="GOOGLE_PAY">Google Pay</option><option value="QR">QR</option></select>
+          </label>
+          <button class="danger quiet" (click)="clearCart()">Clear cart</button>
+          <button class="primary" (click)="checkout()">Purchase cart</button>
+        </div>
+      }
+    </section>
+  }
+
+  @if (view() === 'orders' && auth.hasRole('CUSTOMER')) {
+    <section class="page-heading">
+      <span class="eyebrow">PURCHASE HISTORY</span>
+      <h1>Your orders.</h1>
+    </section>
+    <section class="surface">
+      <div class="section-title"><div><h2>{{ orderPage().totalElements }} orders</h2><p>Open an order to inspect every purchased item.</p></div><button (click)="loadOrders(orderPage().number)">Refresh</button></div>
+      <div class="order-list">
+        @for (order of orderPage().content; track order.id) {
+          <article>
+            <button class="order-summary" (click)="toggleOrderDetails(order.id)">
+              <div><span class="badge" [class.success]="order.status === 'PAID'">{{ order.status }}</span><h3>{{ money(order.totalPriceCents) }}</h3><p>{{ order.createdAt | date:'medium' }}</p></div>
+              <span>{{ expandedOrderId() === order.id ? 'Hide items' : 'View items' }}</span>
+            </button>
+            @if (expandedOrderId() === order.id) {
+              <div class="order-items">
+                @for (item of order.items; track item.id) {
+                  <div>
+                    <span><strong>{{ item.productNameSnapshot }}</strong><small>Sold by {{ item.merchantNameSnapshot }}</small></span>
+                    <span>{{ item.quantity }} × {{ money(item.priceSnapshotCents) }}</span>
+                    <strong>{{ money(item.totalPriceSnapshotCents) }}</strong>
+                  </div>
+                } @empty { <p>No item snapshots available.</p> }
+                <code>Order {{ order.id }}</code>
+              </div>
+            }
+          </article>
+        } @empty { <div class="empty-state"><strong>No orders yet.</strong><button (click)="show('shop')">Start shopping</button></div> }
+      </div>
+      <div class="pagination">
+        <button [disabled]="orderPage().first" (click)="loadOrders(orderPage().number - 1)">Previous</button>
+        <span>Page {{ orderPage().number + 1 }} of {{ orderPage().totalPages || 1 }}</span>
+        <button [disabled]="orderPage().last" (click)="loadOrders(orderPage().number + 1)">Next</button>
+      </div>
+    </section>
+  }
+
+  @if (view() === 'account' && auth.authenticated()) {
+    <section class="page-heading">
+      <span class="eyebrow">ACCOUNT</span>
+      <h1>{{ auth.displayName() }}</h1>
+      <p>Roles: {{ auth.roles().join(', ') }}</p>
+    </section>
+    <section class="surface profile">
+      @if (customerProfile(); as customer) {
+        <div class="avatar large">{{ customer.firstName.charAt(0) }}{{ customer.lastName.charAt(0) }}</div>
+        <div>
+          <span class="badge" [class.success]="customer.enabled">{{ customer.enabled ? 'Enabled' : 'Disabled' }}</span>
+          <h2>{{ customer.firstName }} {{ customer.lastName }}</h2>
+          <dl>
+            <div><dt>Email</dt><dd>{{ customer.email }}</dd></div>
+            <div><dt>Birth date</dt><dd>{{ customer.birthDate | date:'mediumDate' }}</dd></div>
+            <div><dt>Address</dt><dd>{{ customer.address.street }}, {{ customer.address.city }}, {{ customer.address.postalCode }}, {{ customer.address.country }}</dd></div>
+            <div><dt>Member since</dt><dd>{{ customer.createdAt | date:'mediumDate' }}</dd></div>
+          </dl>
+        </div>
+      } @else if (merchantProfile(); as merchant) {
+        <div class="avatar large">{{ merchant.shopName.charAt(0).toUpperCase() }}</div>
+        <div>
+          <span class="badge" [class.success]="merchant.status === 'VERIFIED'">{{ merchant.status }}</span>
+          <h2>{{ merchant.shopName }}</h2>
+          <p>{{ merchant.description || 'No shop description.' }}</p>
+          <dl>
+            <div><dt>Email</dt><dd>{{ merchant.email }}</dd></div>
+            <div><dt>Created</dt><dd>{{ merchant.createdAt | date:'mediumDate' }}</dd></div>
+            @if (merchant.verifiedAt) { <div><dt>Verified</dt><dd>{{ merchant.verifiedAt | date:'mediumDate' }}</dd></div> }
+          </dl>
+        </div>
+      } @else {
+        <div class="empty-state">
+          @if (auth.hasRole('ADMIN')) {
+            <strong>Administrator account</strong><p>Administrative identity is managed by Keycloak.</p>
+          } @else {
+            <strong>Loading profile…</strong>
+          }
+        </div>
+      }
+      @if (auth.hasRole('MERCHANT_PENDING')) {
+        <p class="notice">Your merchant application is awaiting administrator verification. Sign in again after approval.</p>
+      }
+      <button (click)="loadMe()">Reload profile</button>
+    </section>
+  }
+
+  @if (result() !== 'Ready.') {
+    <aside class="toast" aria-live="polite" [class.error]="result().includes('failed')">
+      <button (click)="result.set('Ready.')">×</button>
+      <pre>{{ result() }}</pre>
+    </aside>
+  }
+</main>

@@ -6,36 +6,37 @@ services:
     environment:
       POSTGRES_DB: markethub
       POSTGRES_USER: markethub
-      POSTGRES_PASSWORD: markethub
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-markethub}
       ACCOUNT_DB: account
       ACCOUNT_DB_USER: markethub
-      ACCOUNT_DB_PASSWORD: markethub
+      ACCOUNT_DB_PASSWORD: ${POSTGRES_PASSWORD:-markethub}
       CATALOG_DB: catalog
       CATALOG_DB_USER: markethub
-      CATALOG_DB_PASSWORD: markethub
+      CATALOG_DB_PASSWORD: ${POSTGRES_PASSWORD:-markethub}
       CART_DB: cart
       CART_DB_USER: markethub
-      CART_DB_PASSWORD: markethub
+      CART_DB_PASSWORD: ${POSTGRES_PASSWORD:-markethub}
       ORDER_DB: orders
       ORDER_DB_USER: markethub
-      ORDER_DB_PASSWORD: markethub
+      ORDER_DB_PASSWORD: ${POSTGRES_PASSWORD:-markethub}
       PAYMENT_DB: payment
       PAYMENT_DB_USER: markethub
-      PAYMENT_DB_PASSWORD: markethub
+      PAYMENT_DB_PASSWORD: ${POSTGRES_PASSWORD:-markethub}
       KEYCLOAK_DB: keycloak
       KEYCLOAK_DB_USER: keycloak
-      KEYCLOAK_DB_PASSWORD: keycloak
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./docker/postgres/init-keycloak-db.sh:/docker-entrypoint-initdb.d/10-init-keycloak-db.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U markethub -d markethub"]
+      test: [ "CMD-SHELL", "pg_isready -U markethub -d markethub" ]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 10s
+    restart: "on-failure:3"
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.6.4
@@ -44,11 +45,11 @@ services:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
       KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
     ports:
       - "8090:8080"
       - "9000:9000"
@@ -56,13 +57,15 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "timeout 5 bash -c '</dev/tcp/127.0.0.1/9000'"]
+      test: [ "CMD-SHELL", "timeout 5 bash -c '</dev/tcp/127.0.0.1/9000'" ]
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 30s
     volumes:
       - ./docker/keycloak/import:/opt/keycloak/data/import:ro
+      - ./docker/keycloak/themes:/opt/keycloak/themes:ro
+    restart: "on-failure:3"
 
   kafka:
     image: apache/kafka:4.1.1
@@ -85,14 +88,379 @@ services:
     volumes:
       - kafka-data:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1" ]
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 30s
+    restart: "on-failure:3"
+
+  redis:
+    image: redis:8-alpine
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: "on-failure:3"
+
+  discovery-service:
+    image: markethub/discovery-service:local
+    build:
+      context: ./backend/services/discovery-service
+      dockerfile: Dockerfile
+    labels:
+      logging: "alloy"
+    environment:
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-false}
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+    ports:
+      - "8761:8761"
+    restart: "on-failure:3"
+
+  account-service:
+    image: markethub/account-service:local
+    build:
+      context: ./backend/services/account-service
+      dockerfile: Dockerfile
+    labels:
+      logging: "alloy"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/account
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-markethub}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KEYCLOAK_ISSUER_URI: http://localhost:8090/realms/markethub
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
+      KEYCLOAK_SERVER_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN_CLIENT_SECRET: "${KEYCLOAK_ADMIN_CLIENT_SECRET:?KEYCLOAK_ADMIN_CLIENT_SECRET must be set}"
+      EUREKA_URL: http://discovery-service:8761/eureka/
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-false}
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+    restart: "on-failure:3"
+
+  catalog-service:
+    image: markethub/catalog-service:local
+    build:
+      context: ./backend/services/catalog-service
+      dockerfile: Dockerfile
+    labels:
+      logging: "alloy"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/catalog
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-markethub}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      KEYCLOAK_ISSUER_URI: http://localhost:8090/realms/markethub
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
+      EUREKA_URL: http://discovery-service:8761/eureka/
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-false}
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+      account-service:
+        condition: service_started
+    restart: "on-failure:3"
+
+  cart-service:
+    image: markethub/cart-service:local
+    build:
+      context: ./backend/services/cart-service
+      dockerfile: Dockerfile
+    labels:
+      logging: "alloy"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/cart
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-markethub}
+      KEYCLOAK_ISSUER_URI: http://localhost:8090/realms/markethub
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
+      EUREKA_URL: http://discovery-service:8761/eureka/
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-false}
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+      account-service:
+        condition: service_started
+      catalog-service:
+        condition: service_started
+    restart: "on-failure:3"
+
+  payment-service:
+    image: markethub/payment-service:local
+    build:
+      context: ./backend/services/payment-service
+      dockerfile: Dockerfile
+    labels:
+      logging: "alloy"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payment
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-markethub}
+      KEYCLOAK_ISSUER_URI: http://localhost:8090/realms/markethub
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
+      EUREKA_URL: http://discovery-service:8761/eureka/
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-false}
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+    restart: "on-failure:3"
+
+  order-service:
+    image: markethub/order-service:local
+    build:
+      context: ./backend/services/order-service
+      dockerfile: Dockerfile
+    labels:
+      logging: "alloy"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/orders
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-markethub}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KEYCLOAK_ISSUER_URI: http://localhost:8090/realms/markethub
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
+      EUREKA_URL: http://discovery-service:8761/eureka/
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-false}
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+      account-service:
+        condition: service_started
+      catalog-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+    restart: "on-failure:3"
+
+  notification-service:
+    image: markethub/notification-service:local
+    build:
+      context: ./backend/services/notification-service
+      dockerfile: Dockerfile
+    labels:
+      logging: "alloy"
+    ports:
+      - "8086:8086"
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-disabled}
+      SENDGRID_FROM_EMAIL: ${SENDGRID_FROM_EMAIL:-noreply@markethub.local}
+      SENDGRID_FROM_NAME: ${SENDGRID_FROM_NAME:-MarketHub}
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-false}
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: "on-failure:3"
+
+  gateway-service:
+    image: markethub/gateway-service:local
+    build:
+      context: ./backend/services/gateway-service
+      dockerfile: Dockerfile
+    labels:
+      logging: "alloy"
+    environment:
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      REQUEST_LIMIT: 50
+      WINDOW_SIZE: 1m
+      KEYCLOAK_ISSUER_URI: http://localhost:8090/realms/markethub
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
+      EUREKA_URL: http://discovery-service:8761/eureka/
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-false}
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+    depends_on:
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      discovery-service:
+        condition: service_started
+      account-service:
+        condition: service_started
+      catalog-service:
+        condition: service_started
+      cart-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      payment-service:
+        condition: service_started
+    restart: "on-failure:3"
+
+  frontend:
+    image: markethub/frontend:local
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      gateway-service:
+        condition: service_started
+    restart: "on-failure:3"
+
+
+
+  prometheus:
+    profiles: [ "observability" ]
+    image: prom/prometheus:v3.7.3
+    container_name: markethub-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    restart: "on-failure:3"
+
+  loki:
+    profiles: [ "observability" ]
+    image: grafana/loki:3.7.4
+    container_name: markethub-loki
+
+    command:
+      - -config.file=/etc/loki/loki-config.yaml
+
+    ports:
+      - "3100:3100"
+
+    volumes:
+      - ./observability/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki-data:/loki
+
+    restart: "on-failure:3"
+
+  alloy:
+    profiles: [ "observability" ]
+    image: grafana/alloy:v1.18.0
+    container_name: markethub-alloy
+
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+
+    ports:
+      - "12345:12345"
+
+    volumes:
+      - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy-data:/var/lib/alloy/data
+
+    depends_on:
+      - loki
+
+    restart: "on-failure:3"
+
+  grafana:
+    profiles: [ "observability" ]
+    image: grafana/grafana:13.1.1
+    container_name: markethub-grafana
+
+    ports:
+      - "3001:3000"
+
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+
+    depends_on:
+      - loki
+      - prometheus
+      - tempo
+
+    restart: "on-failure:3"
+
+
+
+  tempo:
+    profiles: [ "observability" ]
+    image: grafana/tempo:2.9.0
+    container_name: markethub-tempo
+    command:
+      - -config.file=/etc/tempo/tempo.yaml
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo-data:/var/tempo
+    restart: "on-failure:3"
+
+
 
 volumes:
   postgres-data:
     name: markethub-v2-local_postgres-data
   kafka-data:
     name: markethub-v2-local_kafka-data
+  redis-data:
+    name: markethub-v2-local_redis-data
+  loki-data:
+    name: markethub-v2-local_loki-data
+  alloy-data:
+    name: markethub-v2-local_alloy-data
+  grafana-data:
+    name: markethub-v2-local_grafana-data
+  prometheus-data:
+    name: markethub-v2-local_prometheus-data
+  tempo-data:
+    name: markethub-v2-local_tempo-data

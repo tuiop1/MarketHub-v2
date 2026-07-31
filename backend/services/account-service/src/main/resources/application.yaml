@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: account-service
+
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8090/realms/markethub}
+
+  datasource:
+    username: markethub
+    password: ${SPRING_DATASOURCE_PASSWORD:markethub}
+    url: jdbc:postgresql://localhost:5432/account
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  liquibase:
+    change-log: classpath:/db/changelog/db.changelog-master.yaml
+
+keycloak:
+  admin:
+    server-url: ${KEYCLOAK_SERVER_URL:http://localhost:8090}
+    realm: markethub
+    client-id: account-service-admin
+    client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET}
+
+server:
+  port: 8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+
+logging:
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        environment: ${APP_ENVIRONMENT:local}
