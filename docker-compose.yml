@@ -25,8 +25,6 @@ services:
       KEYCLOAK_DB: keycloak
       KEYCLOAK_DB_USER: keycloak
       KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:-keycloak}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./docker/postgres/init-keycloak-db.sh:/docker-entrypoint-initdb.d/10-init-keycloak-db.sh:ro
@@ -52,7 +50,6 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
     ports:
       - "8090:8080"
-      - "9000:9000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -73,9 +70,9 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
-      KAFKA_LISTENERS: PLAINTEXT://:29092,CONTROLLER://:29093,PLAINTEXT_HOST://:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://:29092,CONTROLLER://:29093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -83,12 +80,10 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-    ports:
-      - "9092:9092"
     volumes:
       - kafka-data:/var/lib/kafka/data
     healthcheck:
-      test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1" ]
+      test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:29092 >/dev/null 2>&1" ]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -98,8 +93,6 @@ services:
   redis:
     image: redis:8-alpine
     command: redis-server --appendonly yes
-    ports:
-      - "6379:6379"
     volumes:
       - redis-data:/data
     healthcheck:
@@ -121,8 +114,6 @@ services:
       MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
       MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-false}
       MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
-    ports:
-      - "8761:8761"
     restart: "on-failure:3"
 
   account-service:
@@ -281,8 +272,6 @@ services:
       dockerfile: Dockerfile
     labels:
       logging: "alloy"
-    ports:
-      - "8086:8086"
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       SENDGRID_API_KEY: ${SENDGRID_API_KEY:-disabled}
@@ -356,8 +345,6 @@ services:
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
-    ports:
-      - "9090:9090"
     volumes:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
@@ -370,9 +357,6 @@ services:
 
     command:
       - -config.file=/etc/loki/loki-config.yaml
-
-    ports:
-      - "3100:3100"
 
     volumes:
       - ./observability/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
@@ -391,9 +375,6 @@ services:
       - --storage.path=/var/lib/alloy/data
       - /etc/alloy/config.alloy
 
-    ports:
-      - "12345:12345"
-
     volumes:
       - ./observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -410,7 +391,7 @@ services:
     container_name: markethub-grafana
 
     ports:
-      - "3001:3000"
+      - "127.0.0.1:3001:3000"
 
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
@@ -436,10 +417,6 @@ services:
     container_name: markethub-tempo
     command:
       - -config.file=/etc/tempo/tempo.yaml
-    ports:
-      - "3200:3200"
-      - "4317:4317"
-      - "4318:4318"
     volumes:
       - ./observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
       - tempo-data:/var/tempo
