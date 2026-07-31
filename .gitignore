@@ -40,8 +40,7 @@ build/
 ### VS Code ###
 .vscode/
 
-### Local Keycloak exports ###
-docker/keycloak/import/*.json
+
 
 ### Local secrets ###
 .env
