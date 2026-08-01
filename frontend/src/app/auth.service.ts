@@ -1,6 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { environment } from '../environments/environment';
 
 type TokenClaims = {
   exp?: number;
@@ -18,7 +19,7 @@ type TokenResponse = {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly keycloak = 'http://localhost:8090';
+  private readonly keycloak = environment.keycloakUrl;
   private readonly realm = 'markethub';
   private readonly clientId = 'markethub-client';
   private readonly tokenKey = 'markethub_access_token';
