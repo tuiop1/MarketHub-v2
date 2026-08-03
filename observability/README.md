@@ -1,4 +1,4 @@
-# Local observability
+ Local observability
 
 Observability is optional. A normal startup excludes Grafana, Prometheus,
 Loki, Alloy, and Tempo, and disables OTLP trace export:
