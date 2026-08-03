@@ -41,9 +41,6 @@ chmod 600 .env.prod
 Set the real public server IP, ACME contact email, passwords, and secrets in
 `.env.prod`.
 
-When upgrading an existing production installation, rename `CERTBOT_EMAIL` in
-`.env.prod` to `ACME_EMAIL`.
-
 Build backend JAR files:
 
 ```bash
