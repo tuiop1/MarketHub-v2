@@ -13,6 +13,8 @@ import java.util.stream.Collectors;
 @Component
 public class EmailTemplateFactory {
 
+    private static final String CURRENCY = "USD";
+
     public String customerRegistered(CustomerRegisteredEvent event) {
         return """
                 <h2>Welcome to MarketHub, %s</h2>
@@ -58,7 +60,7 @@ public class EmailTemplateFactory {
                 escape(event.customerFirstName()),
                 event.orderId(),
                 rows,
-                money(event.totalPriceCents() ,"EUR")
+                money(event.totalPriceCents())
         );
     }
 
@@ -73,15 +75,15 @@ public class EmailTemplateFactory {
                 """.formatted(
                 escape(item.productName()),
                 item.quantity(),
-                money(item.unitPriceCents(), "EUR"),
-                money(item.totalPriceCents(), "EUR")
+                money(item.unitPriceCents()),
+                money(item.totalPriceCents())
         );
     }
 
-    private String money(Long cents, String currency) {
+    private String money(Long cents) {
         return BigDecimal.valueOf(cents, 2).toPlainString()
                 + " "
-                + currency;
+                + CURRENCY;
     }
 
     private String escape(String value) {
