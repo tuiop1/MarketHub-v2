@@ -80,7 +80,7 @@ public class OrderPurchaseSagaService {
                     quantitiesByProductId
             );
 
-            payment = createPayment(jwt, order, purchaseRequest.paymentMethod());
+            payment = createPayment(order, purchaseRequest.paymentMethod());
 
             attachPayment(order.getId(), payment.paymentId());
 
@@ -124,7 +124,7 @@ public class OrderPurchaseSagaService {
             throw new IllegalArgumentException("Unsupported payment status: " + payment.status());
         } catch(Exception exception){
 
-            compensateAfterUnexpectedFailure(order, payment, stockReservationId, exception, jwt);
+            compensateAfterUnexpectedFailure(order, payment, stockReservationId, exception);
 
             throw  exception;
 
@@ -164,8 +164,7 @@ public class OrderPurchaseSagaService {
 
     private void compensateAfterUnexpectedFailure(Order order, PaymentResultResponse payment,
                                                   UUID stockReservationId,
-                                                  Exception originalException,
-                                                  Jwt jwt){
+                                                  Exception originalException){
 
         log.warn(
                 "Purchase saga failed. Starting compensation: orderId={}, paymentId={}, stockReservationId={}",
@@ -180,7 +179,7 @@ public class OrderPurchaseSagaService {
 
         if(payment != null && payment.paymentId() != null){
             try{
-                paymentServiceClient.cancelOrRefund(authorizationHeader(jwt),payment.paymentId());
+                paymentServiceClient.cancelOrRefund(payment.paymentId());
 
             } catch (Exception e) {
                 compensationFailed = true;
@@ -319,10 +318,9 @@ public class OrderPurchaseSagaService {
     }
 
 
-    private PaymentResultResponse createPayment(Jwt jwt, Order order, PaymentMethod paymentMethod) {
+    private PaymentResultResponse createPayment(Order order, PaymentMethod paymentMethod) {
         try {
             return paymentServiceClient.createPayment(
-                    authorizationHeader(jwt),
                     CreatePaymentRequest.builder()
                             .orderId(order.getId())
                             .customerId(order.getCustomerId())

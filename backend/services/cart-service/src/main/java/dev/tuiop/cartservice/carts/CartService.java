@@ -22,6 +22,7 @@ import dev.tuiop.cartservice.external.customers.exceptions.AccountServiceExcepti
 import dev.tuiop.cartservice.external.merchants.AccountMerchantClient;
 import dev.tuiop.cartservice.external.merchants.MerchantResponse;
 import dev.tuiop.cartservice.external.products.CatalogProductClient;
+import dev.tuiop.cartservice.external.products.InternalCatalogProductClient;
 import dev.tuiop.cartservice.external.products.ProductResponse;
 import dev.tuiop.cartservice.external.products.exceptions.CatalogServiceException;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,7 @@ public class CartService {
     private final CartItemRepository cartItemRepository;
     private final AccountCustomerClient accountCustomerClient;
     private final CatalogProductClient catalogProductClient;
+    private final InternalCatalogProductClient internalCatalogProductClient;
     private final AccountMerchantClient accountMerchantClient;
     private final CatalogCategoryClient catalogCategoryClient;
 
@@ -247,7 +249,7 @@ public class CartService {
         }
 
         try {
-            return catalogProductClient.getBuyableProductsByIds(productIds);
+            return internalCatalogProductClient.getBuyableProductsByIds(productIds);
         } catch (HttpClientErrorException.NotFound exception) {
             throw new ResourceNotFoundException(ProductResponse.class, "ids", productIds);
         } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {

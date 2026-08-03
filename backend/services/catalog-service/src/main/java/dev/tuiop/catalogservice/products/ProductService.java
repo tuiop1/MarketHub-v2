@@ -3,6 +3,7 @@ package dev.tuiop.catalogservice.products;
 import dev.tuiop.catalogservice.categories.Category;
 import dev.tuiop.catalogservice.categories.CategoryRepository;
 import dev.tuiop.catalogservice.external.merchants.AccountMerchantClient;
+import dev.tuiop.catalogservice.external.merchants.InternalAccountMerchantClient;
 import dev.tuiop.catalogservice.external.merchants.MerchantResponse;
 import dev.tuiop.catalogservice.external.merchants.MerchantStatus;
 import dev.tuiop.catalogservice.external.merchants.exceptions.AccountServiceException;
@@ -42,6 +43,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final AccountMerchantClient accountMerchantClient;
+    private final InternalAccountMerchantClient internalAccountMerchantClient;
     private final ProductMapper productMapper;
 
     @PreAuthorize("hasRole('MERCHANT')")
@@ -215,7 +217,7 @@ public class ProductService {
 
     private MerchantResponse getMerchantByKeycloakUserId(String keycloakId) {
         try {
-            return accountMerchantClient.getMerchantByKeycloakUserId(keycloakId);
+            return internalAccountMerchantClient.getMerchantByKeycloakUserId(keycloakId);
         } catch (HttpClientErrorException.NotFound exception) {
             throw new ResourceNotFoundException(MerchantResponse.class, "keycloakId", keycloakId);
         } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
@@ -258,7 +260,7 @@ public class ProductService {
                 .toList();
 
         try {
-            Map<UUID, MerchantResponse> merchantsById = accountMerchantClient.getMerchants(merchantIds)
+            Map<UUID, MerchantResponse> merchantsById = internalAccountMerchantClient.getMerchants(merchantIds)
                     .stream()
                     .collect(Collectors.toMap(MerchantResponse::id, Function.identity()));
 

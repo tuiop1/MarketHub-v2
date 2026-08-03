@@ -28,6 +28,8 @@ public class SecurityConfig {
                         .accessDeniedHandler(apiAccessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/internal/**")
+                        .permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus")
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/customers/register")

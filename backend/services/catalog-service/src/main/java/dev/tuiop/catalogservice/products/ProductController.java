@@ -1,15 +1,12 @@
 package dev.tuiop.catalogservice.products;
 
 import dev.tuiop.catalogservice.products.dto.ProductResponse;
-import dev.tuiop.catalogservice.products.dto.ProductPurchaseResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collection;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -27,13 +24,6 @@ public class ProductController {
     @GetMapping("/{productId}")
     public ResponseEntity<ProductResponse> getProduct(@PathVariable UUID productId) {
         return ResponseEntity.ok(productService.getPublicProduct(productId));
-    }
-
-    @PostMapping("/purchase/buyable")
-    public ResponseEntity<List<ProductPurchaseResponse>> findBuyableProductsForPurchase(
-            @RequestBody Collection<UUID> productIds
-    ) {
-        return ResponseEntity.ok(productService.findBuyableByIdsForUpdate(productIds));
     }
 
 //    @PostMapping(value = "/{productId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

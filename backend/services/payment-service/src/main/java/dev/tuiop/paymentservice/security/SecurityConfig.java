@@ -26,8 +26,8 @@ public class SecurityConfig {
                         .accessDeniedHandler(apiAccessDeniedHandler)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/internal/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
-                        .requestMatchers("/api/v1/payments/**").hasRole("CUSTOMER")
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2

@@ -8,7 +8,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
-@HttpExchange("/api/v1/products/purchase")
+@HttpExchange("/internal/v1/catalog/products")
 public interface CatalogProductClient {
 
     @PostExchange("/buyable")
