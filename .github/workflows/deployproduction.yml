@@ -1,0 +1,72 @@
+name: Deploy to VPS
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: production-vps
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Test and build
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/testandbuild.yml
+
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "$VPS_USER@$VPS_HOST" << 'EOF'
+            set -e
+
+            cd /opt/MarketHub-v2
+
+            compose() {
+              docker compose \
+                -f docker-compose.prod.yml \
+                --env-file .env.prod \
+                "$@"
+            }
+
+            # Remember whether observability is currently running.
+            if compose --profile observability ps \
+                --status running \
+                --services | grep -qx "grafana"; then
+              OBSERVABILITY_ENABLED=true
+            else
+              OBSERVABILITY_ENABLED=false
+            fi
+
+            git fetch origin main
+            git reset --hard origin/main
+
+            ./backend/mvnw \
+              --batch-mode \
+              --no-transfer-progress \
+              -f backend/pom.xml \
+              package \
+              -DskipTests
+
+            if [ "$OBSERVABILITY_ENABLED" = true ]; then
+              compose --profile observability up -d --build
+            else
+              compose up -d --build
+            fi
+          EOF
