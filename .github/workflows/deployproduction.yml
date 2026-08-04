@@ -8,11 +8,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-
-
+  validate:
+    name: Test and build
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/testandbuild.yml
 
   deploy:
-
+    needs: validate
     runs-on: ubuntu-latest
 
     steps:
@@ -67,13 +69,6 @@ jobs:
 
             git fetch origin main
             git reset --hard origin/main
-
-            ./backend/mvnw \
-              --batch-mode \
-              --no-transfer-progress \
-              -f backend/pom.xml \
-              package \
-              -DskipTests
 
             if [ "$OBSERVABILITY_ENABLED" = true ]; then
               compose --profile observability up -d --build

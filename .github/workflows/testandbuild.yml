@@ -34,42 +34,11 @@ jobs:
         working-directory: backend
         run: ./mvnw --batch-mode --no-transfer-progress test
 
-  package:
-    name: Package backend
-    needs: test
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7.0.1
-
-      - name: Set up Java 25
-        uses: actions/setup-java@v5.7.0
-        with:
-          distribution: temurin
-          java-version: "25"
-          cache: maven
-
-
-      - name: Package backend
-        working-directory: backend
-        run: ./mvnw --batch-mode --no-transfer-progress package -DskipTests
-
-      - name: Upload service JARs
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: backend-service-jars
-          path: backend/services/*/target/*-service.jar
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 1
-
   build-images:
     name: Validate Compose and build images
-    needs: package
+    needs: test
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     # Compose evaluates required production variables before it builds any
     # image. These placeholders are not used to start services in CI.
@@ -84,12 +53,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
-
-      - name: Download service JARs
-        uses: actions/download-artifact@v8.0.1
-        with:
-          name: backend-service-jars
-          path: backend/services
 
       - name: Validate Compose configuration
         run: |
