@@ -12,7 +12,7 @@ jobs:
 
 
   deploy:
-    needs: validate
+
     runs-on: ubuntu-latest
 
     steps:
