@@ -7,7 +7,7 @@ import org.springframework.web.service.annotation.PostExchange;
 
 import java.util.UUID;
 
-@HttpExchange("/api/v1/products/purchase/reservations")
+@HttpExchange("/internal/v1/catalog/stock-reservations")
 public interface CatalogStockReservationClient {
 
     @PostExchange

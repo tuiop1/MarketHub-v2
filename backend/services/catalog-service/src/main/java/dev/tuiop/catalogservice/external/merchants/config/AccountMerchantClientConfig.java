@@ -1,6 +1,7 @@
 package dev.tuiop.catalogservice.external.merchants.config;
 
 import dev.tuiop.catalogservice.external.merchants.AccountMerchantClient;
+import dev.tuiop.catalogservice.external.merchants.InternalAccountMerchantClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -29,5 +30,22 @@ public class AccountMerchantClientConfig {
                 .build();
 
         return factory.createClient(AccountMerchantClient.class);
+    }
+
+    @Bean
+    public InternalAccountMerchantClient internalAccountMerchantClient(
+            @Qualifier("loadBalancedRestClientBuilder") RestClient.Builder restClientBuilder,
+            @Value("${services.account.url}") String accountMerchantUrl
+    ) {
+        RestClient restClient = restClientBuilder
+                .baseUrl(accountMerchantUrl)
+                .build();
+
+        RestClientAdapter adapter = RestClientAdapter.create(restClient);
+
+        HttpServiceProxyFactory factory = HttpServiceProxyFactory.builderFor(adapter)
+                .build();
+
+        return factory.createClient(InternalAccountMerchantClient.class);
     }
 }

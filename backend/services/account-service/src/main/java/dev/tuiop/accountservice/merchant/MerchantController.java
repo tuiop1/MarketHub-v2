@@ -11,8 +11,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collection;
-import java.util.List;
 import java.util.UUID;
 
 @RequestMapping("/api/v1/merchants")
@@ -31,30 +29,9 @@ public class MerchantController {
         return ResponseEntity.ok(merchants);
     }
 
-    @GetMapping("/batch")
-    public ResponseEntity<List<MerchantResponse>> getMerchantsByIds(
-            @RequestParam Collection<UUID> merchantIds
-    ) {
-        List<MerchantResponse> merchants = merchantService.getByIds(merchantIds)
-                .stream()
-                .map(merchantMapper::toResponse)
-                .toList();
-
-        return ResponseEntity.ok(merchants);
-    }
-
     @GetMapping("/{merchantId}")
     public ResponseEntity<MerchantResponse> getMerchantById(@PathVariable UUID merchantId) {
         return ResponseEntity.ok(merchantMapper.toResponse(merchantService.getById(merchantId)));
-    }
-
-    @GetMapping("/keycloak/{keycloakUserId}")
-    public ResponseEntity<MerchantResponse> getMerchantByKeycloakUserId(
-            @PathVariable("keycloakUserId") String keycloakUserId
-    ) {
-        return ResponseEntity.ok(merchantMapper.toResponse(
-                merchantService.getByKeycloakUserId(keycloakUserId)
-        ));
     }
 
     @PreAuthorize("hasAnyRole('MERCHANT', 'MERCHANT_PENDING', 'MERCHANT_REJECTED')")

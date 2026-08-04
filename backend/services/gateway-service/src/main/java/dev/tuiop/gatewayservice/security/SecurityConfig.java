@@ -22,6 +22,7 @@ public class SecurityConfig {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(auth -> auth
+                        .pathMatchers("/internal/**").denyAll()
                         .pathMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
 
                         .pathMatchers(HttpMethod.POST,
@@ -35,15 +36,13 @@ public class SecurityConfig {
                         .pathMatchers("/api/v1/merchants/**").permitAll()
 
                         .pathMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
-                        .pathMatchers(HttpMethod.POST, "/api/v1/products/purchase/**").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
 
                         .pathMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         .pathMatchers("/api/v1/merchant/products/**").hasRole("MERCHANT")
                         .pathMatchers(
                                 "/api/v1/carts/**",
-                                "/api/v1/orders/**",
-                                "/api/v1/payments/**").hasRole("CUSTOMER")
+                                "/api/v1/orders/**").hasRole("CUSTOMER")
 
                         .anyExchange().authenticated()
                 )
