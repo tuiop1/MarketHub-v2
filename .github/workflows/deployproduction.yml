@@ -70,13 +70,6 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
-            ./backend/mvnw \
-              --batch-mode \
-              --no-transfer-progress \
-              -f backend/pom.xml \
-              package \
-              -DskipTests
-
             if [ "$OBSERVABILITY_ENABLED" = true ]; then
               compose --profile observability up -d --build
             else

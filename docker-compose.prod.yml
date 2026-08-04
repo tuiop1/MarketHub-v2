@@ -121,8 +121,8 @@ services:
   discovery-service:
     image: markethub/discovery-service:local
     build:
-      context: ./backend/services/discovery-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: services/discovery-service/Dockerfile
     labels:
       logging: "alloy"
     environment:
@@ -134,8 +134,8 @@ services:
   account-service:
     image: markethub/account-service:local
     build:
-      context: ./backend/services/account-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: services/account-service/Dockerfile
     labels:
       logging: "alloy"
     environment:
@@ -164,8 +164,8 @@ services:
   catalog-service:
     image: markethub/catalog-service:local
     build:
-      context: ./backend/services/catalog-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: services/catalog-service/Dockerfile
     labels:
       logging: "alloy"
     environment:
@@ -195,8 +195,8 @@ services:
   cart-service:
     image: markethub/cart-service:local
     build:
-      context: ./backend/services/cart-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: services/cart-service/Dockerfile
     labels:
       logging: "alloy"
     environment:
@@ -224,8 +224,8 @@ services:
   payment-service:
     image: markethub/payment-service:local
     build:
-      context: ./backend/services/payment-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: services/payment-service/Dockerfile
     labels:
       logging: "alloy"
     environment:
@@ -249,8 +249,8 @@ services:
   order-service:
     image: markethub/order-service:local
     build:
-      context: ./backend/services/order-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: services/order-service/Dockerfile
     labels:
       logging: "alloy"
     environment:
@@ -283,8 +283,8 @@ services:
   notification-service:
     image: markethub/notification-service:local
     build:
-      context: ./backend/services/notification-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: services/notification-service/Dockerfile
     labels:
       logging: "alloy"
     environment:
@@ -303,8 +303,8 @@ services:
   gateway-service:
     image: markethub/gateway-service:local
     build:
-      context: ./backend/services/gateway-service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: services/gateway-service/Dockerfile
     labels:
       logging: "alloy"
     environment:
