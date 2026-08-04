@@ -18,24 +18,26 @@ jobs:
     steps:
       - name: Configure SSH
         env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
           SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
         run: |
-          set -euo pipefail
-          
-          test -n "$SSH_PRIVATE_KEY" || {
-            echo "VPS_SSH_PRIVATE_KEY is empty"
-            exit 1
-          }
-          
-          install -d -m 700 ~/.ssh
-          
-          printf '%s\n' "$SSH_PRIVATE_KEY" |
-            tr -d '\r' > ~/.ssh/id_ed25519
-          
+          set -e
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf '%s\n' "$SSH_PRIVATE_KEY" \
+            | tr -d '\r' \
+            > ~/.ssh/id_ed25519
+
           chmod 600 ~/.ssh/id_ed25519
-          
-          # Verifies that the runner can parse the private key.
+
+          # Verify that the private key is valid
           ssh-keygen -y -f ~/.ssh/id_ed25519 > /dev/null
+
+          # Add the VPS host key
+          ssh-keyscan -H "$VPS_HOST" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
       - name: Deploy
         env:
