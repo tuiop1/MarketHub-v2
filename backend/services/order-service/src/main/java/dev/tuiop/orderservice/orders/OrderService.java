@@ -10,6 +10,7 @@ import dev.tuiop.orderservice.external.customers.CustomerResponse;
 import dev.tuiop.orderservice.external.customers.exceptions.AccountServiceException;
 import dev.tuiop.orderservice.orders.dto.PurchaseItemRequest;
 import dev.tuiop.orderservice.orders.dto.PurchaseRequest;
+import dev.tuiop.orderservice.orders.enums.OrderStatus;
 import dev.tuiop.orderservice.orders.exceptions.EmptyCartException;
 import dev.tuiop.orderservice.external.payments.PaymentMethod;
 import lombok.RequiredArgsConstructor;
@@ -64,8 +65,9 @@ public class OrderService {
         Order order = orderPurchaseSagaService.purchase(jwt, new PurchaseRequest(items, paymentMethod));
 
             try{
-
-                clearMyCart(jwt);
+                if(order.getStatus() == OrderStatus.PAID){
+                    clearMyCart(jwt);
+                }
             }
             catch (Exception e ){
                 log.warn("Order created, but cart clearing failed: orderId={}", order.getId(), e);
