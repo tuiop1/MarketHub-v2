@@ -54,17 +54,6 @@ MarketHub supports the principal marketplace flows end to end:
 
 ## Architecture
 
-<p align="center">
-  <strong>Architecture diagram will be added here</strong><br>
-  <sub>Planned location: <code>docs/images/architecture.png</code></sub>
-</p>
-
-<!-- Replace the placeholder above with:
-<p align="center">
-  <img src="docs/images/architecture.png" alt="MarketHub v2 system architecture" width="100%">
-</p>
--->
-
 MarketHub is divided into an edge layer, domain services, platform services, and supporting infrastructure. External requests enter through the reverse proxy and API Gateway. The gateway validates JWTs, applies Redis-backed rate limits, and forwards only public API routes. Keycloak owns identities and realm roles, while Eureka allows services to resolve each other without hard-coded addresses.
 
 The business logic is split by capability rather than by technical layer. Account, catalog, cart, order, and payment data remain under the ownership of their respective services. They use separate logical PostgreSQL databases, although a single PostgreSQL container is used in the current Docker deployment to keep the infrastructure practical for a portfolio environment.
