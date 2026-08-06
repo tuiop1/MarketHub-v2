@@ -2,7 +2,7 @@
 
 # MarketHub v2
 
-### A backend-first marketplace built as a distributed microservices system
+### A distributed marketplace platform built with Java and Spring
 
 [![Java](https://img.shields.io/badge/Java-25-ED8B00?logo=openjdk&logoColor=white)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1-6DB33F?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
@@ -11,7 +11,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![CI](https://github.com/tuiop1/MarketHub-v2/actions/workflows/testandbuild.yml/badge.svg)](https://github.com/tuiop1/MarketHub-v2/actions/workflows/testandbuild.yml)
 
-**MarketHub v2** is a Java backend portfolio project that models a marketplace as a set of independently deployable services. The project focuses on service boundaries, distributed transactions, failure compensation, authentication, messaging, observability, testing, and automated deployment rather than only CRUD functionality.
+**MarketHub v2** is a distributed marketplace platform that supports customer, merchant, and administrative workflows across independently deployable services. It provides secure authentication and role management, product and category management, cart operations, stock reservation, coordinated order and payment processing, failure compensation, asynchronous email notifications, observability, and automated deployment.
 
 [Architecture](#architecture) · [API](#api-endpoints) · [Order Flow](#order-and-payment-flow) · [Run Locally](#running-locally) · [Deployment](#production-deployment)
 
@@ -56,7 +56,7 @@ MarketHub supports the principal marketplace flows end to end:
 
 MarketHub is divided into an edge layer, domain services, platform services, and supporting infrastructure. External requests enter through the reverse proxy and API Gateway. The gateway validates JWTs, applies Redis-backed rate limits, and forwards only public API routes. Keycloak owns identities and realm roles, while Eureka allows services to resolve each other without hard-coded addresses.
 
-The business logic is split by capability rather than by technical layer. Account, catalog, cart, order, and payment data remain under the ownership of their respective services. They use separate logical PostgreSQL databases, although a single PostgreSQL container is used in the current Docker deployment to keep the infrastructure practical for a portfolio environment.
+The business logic is split by capability rather than by technical layer. Account, catalog, cart, order, and payment data remain under the ownership of their respective services. They use separate logical PostgreSQL databases, although a single PostgreSQL container is used in the current Docker deployment to keep the infrastructure resource-efficient and operationally manageable.
 
 Immediate operations use synchronous REST calls because the caller needs a result before continuing. Kafka is used for customer registration, merchant registration, and order-confirmation events because notification delivery should not extend or block the main transaction.
 
@@ -140,7 +140,7 @@ This design keeps each service responsible for its own state while giving the pu
 
 **Security at more than one layer.** The gateway validates incoming tokens and downstream protected services also operate as OAuth 2.0 resource servers. Administrative identity operations are isolated in `account-service` through a confidential Keycloak service account.
 
-**Portfolio-scale infrastructure with production-oriented patterns.** The deployment uses one VPS, one Kafka broker, and one PostgreSQL server to control cost and resource usage. Logical service separation, health checks, persistent volumes, observability, and automated deployment are still retained so the system demonstrates realistic operational concerns without pretending to be a highly available production cluster.
+**Production-oriented deployment with controlled infrastructure costs.** The deployment uses one VPS, one Kafka broker, and one PostgreSQL server to control cost and resource usage. Logical service separation, health checks, persistent volumes, observability, and automated deployment are retained while keeping the operational footprint manageable.
 
 ---
 
@@ -382,14 +382,14 @@ The same update is automated by `.github/workflows/deployproduction.yml` after t
 
 ---
 
-## Frontend scope
+## Frontend
 
-The included Angular frontend was **AI-generated** and integrated only as a functional client for exercising the backend workflows end to end. It is not presented as frontend portfolio work, and its architecture or visual design is not the focus of this repository.
+The included Angular frontend was **AI-generated** and integrated as a functional web client for the platform. It provides access to the main customer, merchant, and administrative workflows and allows the complete system to be demonstrated end to end.
 
-The intended evaluation scope is the Java backend: service decomposition, domain workflows, data consistency, security, messaging, testing, deployment, and observability.
+The Java backend implements the platform's service decomposition, domain workflows, data consistency mechanisms, security, messaging, testing, deployment, and observability.
 
 ---
 
 ## Author
 
-Developed by **[tuiop1](https://github.com/tuiop1)** as a Java backend and distributed-systems portfolio project.
+Developed by **[tuiop1](https://github.com/tuiop1)**.
