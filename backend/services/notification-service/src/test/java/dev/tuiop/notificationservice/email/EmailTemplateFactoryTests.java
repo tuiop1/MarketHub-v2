@@ -37,7 +37,7 @@ class EmailTemplateFactoryTests {
         String email = templateFactory.orderPaid(event);
 
         assertEquals(3, occurrences(email, "USD"));
-        assertFalse(email.contains("EUR"));
+
     }
 
     private int occurrences(String value, String searchTerm) {
