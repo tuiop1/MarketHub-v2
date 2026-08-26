@@ -1,6 +1,5 @@
 package dev.tuiop.paymentservice.payments;
 
-import dev.tuiop.paymentservice.payments.dto.CreatePaymentRequest;
 import dev.tuiop.paymentservice.payments.enums.PaymentMethod;
 import dev.tuiop.paymentservice.payments.enums.PaymentStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,8 +8,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -18,8 +20,12 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @Testcontainers
+@AutoConfigureMockMvc
 @SpringBootTest(properties = {
         "eureka.client.enabled=false",
         "spring.cloud.discovery.enabled=false",
@@ -41,7 +47,7 @@ class PaymentServiceIntegrationTests {
     }
 
     @Autowired
-    private PaymentService paymentService;
+    private MockMvc mockMvc;
 
     @Autowired
     private PaymentRepository paymentRepository;
@@ -53,97 +59,78 @@ class PaymentServiceIntegrationTests {
 
     @ParameterizedTest
     @EnumSource(value = PaymentMethod.class, names = {"CARD", "GOOGLE_PAY"})
-    void supportedPaymentMethodsSucceed(PaymentMethod method) {
-        Payment payment = paymentService.createPayment(request(UUID.randomUUID(), UUID.randomUUID(), 2_500L, method));
-
-        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
-        assertThat(paymentRepository.findById(payment.getId()))
-                .get()
-                .satisfies(persisted -> {
-                    assertThat(persisted.getId()).isEqualTo(payment.getId());
-                    assertThat(persisted.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
-                });
-    }
-
-    @Test
-    void qrPaymentFailsAndIsPersisted() {
-        Payment payment = paymentService.createPayment(request(
-                UUID.randomUUID(), UUID.randomUUID(), 2_500L, PaymentMethod.QR
-        ));
-
-        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
-        assertThat(paymentRepository.findById(payment.getId()))
-                .get()
-                .extracting(Payment::getStatus)
-                .isEqualTo(PaymentStatus.FAILED);
-    }
-
-    @Test
-    void duplicateRequestForOrderReturnsOriginalPayment() {
+    void successfulPaymentFlowIsIdempotentAndRefundable(PaymentMethod paymentMethod) throws Exception {
         UUID orderId = UUID.randomUUID();
         UUID customerId = UUID.randomUUID();
-        CreatePaymentRequest request = request(orderId, customerId, 4_200L, PaymentMethod.CARD);
 
-        Payment first = paymentService.createPayment(request);
-        Payment duplicate = paymentService.createPayment(request);
+        mockMvc.perform(post("/internal/v1/payments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(paymentRequest(orderId, customerId, 4_200L, paymentMethod)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
 
-        assertThat(duplicate.getId()).isEqualTo(first.getId());
+        Payment created = paymentRepository.findByOrderId(orderId).orElseThrow();
+        assertThat(created.getCustomerId()).isEqualTo(customerId);
+        assertThat(created.getAmountCents()).isEqualTo(4_200L);
+        assertThat(created.getMethod()).isEqualTo(paymentMethod);
+
+        mockMvc.perform(post("/internal/v1/payments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(paymentRequest(orderId, UUID.randomUUID(), 99_999L, PaymentMethod.QR)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paymentId").value(created.getId().toString()))
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"));
+
         assertThat(paymentRepository.count()).isOne();
-    }
 
-    @Test
-    void duplicateOrderCannotChangeOriginalPaymentDetails() {
-        UUID orderId = UUID.randomUUID();
-        UUID originalCustomerId = UUID.randomUUID();
-        Payment original = paymentService.createPayment(request(
-                orderId, originalCustomerId, 4_200L, PaymentMethod.CARD
-        ));
+        refund(created.getId(), PaymentStatus.REFUNDED);
+        refund(created.getId(), PaymentStatus.REFUNDED);
 
-        Payment duplicate = paymentService.createPayment(request(
-                orderId, UUID.randomUUID(), 99_999L, PaymentMethod.QR
-        ));
-
-        assertThat(duplicate.getId()).isEqualTo(original.getId());
-        assertThat(duplicate.getCustomerId()).isEqualTo(originalCustomerId);
-        assertThat(duplicate.getAmountCents()).isEqualTo(4_200L);
-        assertThat(duplicate.getMethod()).isEqualTo(PaymentMethod.CARD);
-        assertThat(duplicate.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
-    }
-
-    @Test
-    void successfulPaymentCanBeRefundedIdempotently() {
-        Payment payment = paymentService.createPayment(request(
-                UUID.randomUUID(), UUID.randomUUID(), 4_200L, PaymentMethod.CARD
-        ));
-
-        Payment firstRefund = paymentService.cancelOrRefundByPaymentId(payment.getId());
-        Payment duplicateRefund = paymentService.cancelOrRefundByPaymentId(payment.getId());
-
-        assertThat(firstRefund.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
-        assertThat(duplicateRefund.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
-        assertThat(paymentRepository.findById(payment.getId()))
+        assertThat(paymentRepository.findById(created.getId()))
                 .get()
                 .extracting(Payment::getStatus)
                 .isEqualTo(PaymentStatus.REFUNDED);
     }
 
     @Test
-    void failedPaymentIsNotChangedByRefundRequest() {
-        Payment payment = paymentService.createPayment(request(
-                UUID.randomUUID(), UUID.randomUUID(), 4_200L, PaymentMethod.QR
-        ));
+    void failedQrPaymentRemainsFailedWhenRefundIsRequested() throws Exception {
+        UUID orderId = UUID.randomUUID();
 
-        Payment result = paymentService.cancelOrRefundByPaymentId(payment.getId());
+        mockMvc.perform(post("/internal/v1/payments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(paymentRequest(orderId, UUID.randomUUID(), 2_500L, PaymentMethod.QR)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("FAILED"));
 
-        assertThat(result.getStatus()).isEqualTo(PaymentStatus.FAILED);
+        Payment failed = paymentRepository.findByOrderId(orderId).orElseThrow();
+        refund(failed.getId(), PaymentStatus.FAILED);
+
+        assertThat(paymentRepository.findById(failed.getId()))
+                .get()
+                .extracting(Payment::getStatus)
+                .isEqualTo(PaymentStatus.FAILED);
     }
 
-    private CreatePaymentRequest request(
+    private void refund(UUID paymentId, PaymentStatus expectedStatus) throws Exception {
+        mockMvc.perform(post("/internal/v1/payments/{paymentId}/cancel-or-refund", paymentId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paymentId").value(paymentId.toString()))
+                .andExpect(jsonPath("$.status").value(expectedStatus.name()));
+    }
+
+    private String paymentRequest(
             UUID orderId,
             UUID customerId,
             long amountCents,
             PaymentMethod paymentMethod
     ) {
-        return new CreatePaymentRequest(orderId, customerId, amountCents, paymentMethod);
+        return """
+                {
+                  "orderId": "%s",
+                  "customerId": "%s",
+                  "amountCents": %d,
+                  "paymentMethod": "%s"
+                }
+                """.formatted(orderId, customerId, amountCents, paymentMethod);
     }
 }
