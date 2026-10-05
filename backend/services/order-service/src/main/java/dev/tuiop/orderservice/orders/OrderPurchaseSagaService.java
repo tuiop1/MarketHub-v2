@@ -15,9 +15,7 @@ import dev.tuiop.orderservice.external.payments.PaymentStatus;
 import dev.tuiop.orderservice.external.payments.client.PaymentServiceClient;
 import dev.tuiop.orderservice.external.payments.exceptions.PaymentServiceException;
 import dev.tuiop.orderservice.external.products.CatalogStockReservationClient;
-import dev.tuiop.orderservice.external.products.ProductResponse;
 import dev.tuiop.orderservice.external.products.StockReservationItemRequest;
-import dev.tuiop.orderservice.external.products.StockReservationItemResponse;
 import dev.tuiop.orderservice.external.products.StockReservationRequest;
 import dev.tuiop.orderservice.external.products.StockReservationResponse;
 import dev.tuiop.orderservice.external.products.exceptions.CatalogServiceException;
@@ -51,6 +49,7 @@ public class OrderPurchaseSagaService {
     private static final long RETRY_DELAY_MS = 200;
 
     private final OrderRepository orderRepository;
+    private final OrderReservationService orderReservationService;
     private final AccountCustomerClient accountCustomerClient;
     private final CatalogStockReservationClient catalogStockReservationClient;
     private final PaymentServiceClient paymentServiceClient;
@@ -74,7 +73,7 @@ public class OrderPurchaseSagaService {
                 .items(items)
                 .build();
 
-        Order order = null;
+        Order order = orderReservationService.createPendingReservation(customerResponse.id(), stockReservationId);
         PaymentResultResponse payment = null;
         boolean paymentAttempted = false;
         boolean stockReleaseAttempted = false;
@@ -84,12 +83,10 @@ public class OrderPurchaseSagaService {
 
             StockReservationResponse reservation = reserveStock(request);
 
-            order = createPendingOrder(
-                    customerResponse.id(),
-                    stockReservationId,
-                    toProductResponses(reservation.items()),
-                    quantitiesByProductId
-            );
+            UUID reservedOrderId = order.getId();
+            order = retry("save stock reservation snapshots",
+                    () -> orderReservationService.recordReservation(
+                            reservedOrderId, reservation.items(), quantitiesByProductId));
 
             paymentAttempted = true;
             payment = createPayment(order, purchaseRequest.paymentMethod());
@@ -233,31 +230,6 @@ public class OrderPurchaseSagaService {
     private String failureReason(Exception exception, String details) {
         String reason = exception.getClass().getSimpleName() + ": " + exception.getMessage() + "; " + details;
         return reason.substring(0, Math.min(reason.length(), 1000));
-    }
-
-    private Order createPendingOrder(
-            UUID customerId,
-            UUID stockReservationId,
-            Collection<ProductResponse> products,
-            Map<UUID, Integer> quantitiesByProductId
-    ) {
-
-        Order order = Order.builder()
-                .customerId(customerId)
-                .stockReservationId(stockReservationId)
-                .status(OrderStatus.PENDING_PAYMENT)
-                .totalPriceCents(0L)
-                .build();
-
-        for (ProductResponse product : products) {
-            Integer quantity = quantitiesByProductId.get(product.id());
-            OrderItem item = OrderItem.fromProduct(product, quantity);
-            order.addItem(item);
-        }
-
-        order.recalculateTotalPrice();
-
-        return orderRepository.save(order);
     }
 
     private Order attachPayment(UUID orderId, UUID paymentId) {
@@ -445,28 +417,6 @@ public class OrderPurchaseSagaService {
                 || exception instanceof DataAccessResourceFailureException
                 || exception instanceof CannotCreateTransactionException
                 || exception instanceof TransactionSystemException;
-    }
-
-    private List<ProductResponse> toProductResponses(Collection<StockReservationItemResponse> items) {
-        return items.stream()
-                .map(this::toProductResponse)
-                .toList();
-    }
-
-    private ProductResponse toProductResponse(StockReservationItemResponse item) {
-        return new ProductResponse(
-                item.productId(),
-                item.merchantId(),
-                "",
-                null,
-                item.productName(),
-                null,
-                item.unitPriceCents(),
-                null,
-                true,
-                null,
-                null
-        );
     }
 
 }

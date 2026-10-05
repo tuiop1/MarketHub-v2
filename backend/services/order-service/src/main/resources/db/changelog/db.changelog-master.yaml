@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/changes/2026-07-12-001-add-saga-order-columns.yaml
   - include:
       file: db/changelog/changes/2026-10-05-001-create-order-confirmation-outbox.yaml
+  - include:
+      file: db/changelog/changes/2026-10-05-002-add-pending-reservation-status.yaml

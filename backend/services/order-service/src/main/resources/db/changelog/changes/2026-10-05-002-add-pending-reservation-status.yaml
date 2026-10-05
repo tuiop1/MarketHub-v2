@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2026-10-05-002-add-pending-reservation-status
+      author: tuiop
+      changes:
+        - sql:
+            sql: >-
+              ALTER TABLE orders DROP CONSTRAINT chk_orders_status;
+              ALTER TABLE orders ADD CONSTRAINT chk_orders_status
+              CHECK (status IN ('PENDING_RESERVATION', 'PENDING_PAYMENT', 'PAID',
+                               'PAYMENT_FAILED', 'CANCELLED', 'COMPENSATION_FAILED'));
+      rollback:
+        - sql:
+            sql: >-
+              ALTER TABLE orders DROP CONSTRAINT chk_orders_status;
+              ALTER TABLE orders ADD CONSTRAINT chk_orders_status
+              CHECK (status IN ('PENDING_PAYMENT', 'PAID', 'PAYMENT_FAILED',
+                               'CANCELLED', 'COMPENSATION_FAILED'));

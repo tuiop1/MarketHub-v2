@@ -17,6 +17,7 @@ import dev.tuiop.orderservice.orders.Order;
 import dev.tuiop.orderservice.orders.OrderItem;
 import dev.tuiop.orderservice.orders.OrderPurchaseSagaService;
 import dev.tuiop.orderservice.orders.OrderRepository;
+import dev.tuiop.orderservice.orders.OrderReservationService;
 import dev.tuiop.orderservice.orders.dto.PurchaseItemRequest;
 import dev.tuiop.orderservice.orders.dto.PurchaseRequest;
 import dev.tuiop.orderservice.orders.enums.OrderStatus;
@@ -45,6 +46,7 @@ import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -67,6 +69,7 @@ import static org.mockito.Mockito.when;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ImportAutoConfiguration(LiquibaseAutoConfiguration.class)
 @Import({OrderPaymentCompletionService.class, OrderConfirmationOutboxPublisher.class, OrderPurchaseSagaService.class,
+        OrderReservationService.class,
         OrderConfirmationOutboxIntegrationTest.JsonConfiguration.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @EnabledIf("databaseAvailable")
@@ -77,6 +80,7 @@ class OrderConfirmationOutboxIntegrationTest {
     @Autowired OrderConfirmationOutboxRepository outbox;
     @Autowired OrderPaymentCompletionService completion;
     @Autowired OrderPurchaseSagaService purchaseService;
+    @Autowired OrderReservationService reservations;
     @Autowired OrderConfirmationOutboxPublisher outboxPublisher;
     @Autowired ObjectMapper mapper;
     @Autowired JdbcTemplate jdbc;
@@ -290,6 +294,86 @@ class OrderConfirmationOutboxIntegrationTest {
         verifyNoInteractions(publisher);
     }
 
+    @Test
+    void savedIntentSurvivesAPurchaseDisappearingDuringReservation() {
+        UUID customerId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        when(customers.getMe("Bearer test-token")).thenReturn(new CustomerResponse(customerId,
+                "John", "Doe", null, "customer@example.com", null, true, null, null));
+        UUID[] reservationId = new UUID[1];
+        when(catalog.reserveStock(any())).thenAnswer(call -> {
+            StockReservationRequest request = call.getArgument(0);
+            reservationId[0] = request.reservationId();
+            assertThat(jdbc.queryForObject("select status from orders where stock_reservation_id = ?",
+                    String.class, request.reservationId())).isEqualTo("PENDING_RESERVATION");
+            // Bypass the exception handler, as a process crash would.
+            throw new AssertionError("Purchase disappeared after Catalog reserved stock");
+        });
+
+        assertThatThrownBy(() -> purchaseService.purchase(jwt(), new PurchaseRequest(
+                List.of(new PurchaseItemRequest(productId, 2)), PaymentMethod.CARD)))
+                .isInstanceOf(AssertionError.class);
+
+        var persisted = orders.findAll().getFirst();
+        assertThat(persisted.getStatus()).isEqualTo(OrderStatus.PENDING_RESERVATION);
+        assertThat(persisted.getCustomerId()).isEqualTo(customerId);
+        assertThat(persisted.getStockReservationId()).isEqualTo(reservationId[0]);
+        assertThat(persisted.getTotalPriceCents()).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from order_items", Long.class)).isZero();
+        assertThat(outbox.count()).isZero();
+        verifyNoInteractions(payments, publisher);
+        verify(catalog, never()).releaseStock(any());
+    }
+
+    @Test
+    void failedIntentSaveDoesNotCallCatalogOrPayment() {
+        jdbc.execute("alter table orders add constraint reject_intent check (status <> 'PENDING_RESERVATION')");
+        try {
+            assertThatThrownBy(() -> purchase(PaymentStatus.SUCCEEDED)).isInstanceOf(RuntimeException.class);
+            assertThat(orders.count()).isZero();
+            verifyNoInteractions(catalog, payments, publisher);
+        } finally {
+            jdbc.execute("alter table orders drop constraint reject_intent");
+        }
+    }
+
+    @Test
+    void failedSnapshotSaveRollsBackItemsTotalAndPaymentStatus() {
+        Order pending = reservations.createPendingReservation(UUID.randomUUID(), UUID.randomUUID());
+        UUID productId = UUID.randomUUID();
+        var items = List.of(new StockReservationItemResponse(productId, UUID.randomUUID(),
+                "Coffee beans", 1299L, 2, 2598L));
+        jdbc.execute("alter table order_items add constraint reject_snapshot check (false)");
+        try {
+            assertThatThrownBy(() -> reservations.recordReservation(pending.getId(), items, Map.of(productId, 2)))
+                    .isInstanceOf(RuntimeException.class);
+            var persisted = orders.findById(pending.getId()).orElseThrow();
+            assertThat(persisted.getStatus()).isEqualTo(OrderStatus.PENDING_RESERVATION);
+            assertThat(persisted.getTotalPriceCents()).isZero();
+            assertThat(jdbc.queryForObject("select count(*) from order_items", Long.class)).isZero();
+            verifyNoInteractions(payments, publisher);
+        } finally {
+            jdbc.execute("alter table order_items drop constraint reject_snapshot");
+        }
+    }
+
+    @Test
+    void repeatedSnapshotSaveDoesNotAddTheItemsTwice() {
+        Order pending = reservations.createPendingReservation(UUID.randomUUID(), UUID.randomUUID());
+        UUID productId = UUID.randomUUID();
+        var items = List.of(new StockReservationItemResponse(productId, UUID.randomUUID(),
+                "Coffee beans", 1299L, 2, 2598L));
+        Order first = reservations.recordReservation(pending.getId(), items, Map.of(productId, 2));
+
+        Order repeated = reservations.recordReservation(pending.getId(), items, Map.of(productId, 2));
+
+        assertThat(repeated.getStatus()).isEqualTo(OrderStatus.PENDING_PAYMENT);
+        assertThat(repeated.getOrderItems()).hasSize(1);
+        assertThat(repeated.getOrderItems().getFirst().getId()).isEqualTo(first.getOrderItems().getFirst().getId());
+        assertThat(repeated.getTotalPriceCents()).isEqualTo(2598L);
+        assertThat(jdbc.queryForObject("select count(*) from order_items", Long.class)).isEqualTo(1L);
+    }
+
     private Order purchase(PaymentStatus paymentStatus) {
         UUID customerId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
@@ -298,15 +382,20 @@ class OrderConfirmationOutboxIntegrationTest {
         when(customers.getMe("Bearer test-token")).thenReturn(customer);
         when(catalog.reserveStock(any())).thenAnswer(call -> {
             StockReservationRequest request = call.getArgument(0);
+            assertThat(jdbc.queryForObject("select status from orders where stock_reservation_id = ?",
+                    String.class, request.reservationId())).isEqualTo("PENDING_RESERVATION");
             return new StockReservationResponse(request.reservationId(), StockReservationStatus.RESERVED,
                     List.of(new StockReservationItemResponse(productId, UUID.randomUUID(),
                             "Coffee beans", 1299L, 2, 2598L)));
         });
         when(payments.createPayment(any()))
                 .thenReturn(new PaymentResultResponse(UUID.randomUUID(), paymentStatus, "Test payment"));
-        Jwt jwt = Jwt.withTokenValue("test-token").header("alg", "none").subject("test-customer").build();
-        return purchaseService.purchase(jwt, new PurchaseRequest(
+        return purchaseService.purchase(jwt(), new PurchaseRequest(
                 List.of(new PurchaseItemRequest(productId, 2)), PaymentMethod.CARD));
+    }
+
+    private Jwt jwt() {
+        return Jwt.withTokenValue("test-token").header("alg", "none").subject("test-customer").build();
     }
 
     private Order complete(Order pending) {

@@ -18,9 +18,9 @@ import dev.tuiop.orderservice.orders.dto.PurchaseItemRequest;
 import dev.tuiop.orderservice.orders.dto.PurchaseRequest;
 import dev.tuiop.orderservice.orders.enums.OrderStatus;
 import dev.tuiop.orderservice.orders.outbox.OrderPaymentCompletionService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -56,12 +56,18 @@ class OrderPurchaseSagaServiceTest {
     @Mock CatalogStockReservationClient catalog;
     @Mock PaymentServiceClient payments;
     @Mock OrderPaymentCompletionService completion;
-    @InjectMocks OrderPurchaseSagaService service;
+    private OrderPurchaseSagaService service;
 
     private final UUID orderId = UUID.randomUUID();
     private final UUID paymentId = UUID.randomUUID();
     private final UUID productId = UUID.randomUUID();
     private Order savedOrder;
+
+    @BeforeEach
+    void createService() {
+        service = new OrderPurchaseSagaService(orders, new OrderReservationService(orders),
+                customers, catalog, payments, completion);
+    }
 
     @Test
     void lostPaymentResponseCancelsByOrderIdAfterReleasingStock() {
