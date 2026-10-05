@@ -18,4 +18,7 @@ public interface PaymentServiceClient {
     @PostExchange("/{paymentId}/cancel-or-refund")
     PaymentResultResponse cancelOrRefund(@PathVariable("paymentId") UUID paymentId);
 
+    @PostExchange("/by-order/{orderId}/cancel-or-refund")
+    PaymentResultResponse cancelOrRefundByOrderId(@PathVariable("orderId") UUID orderId);
+
 }

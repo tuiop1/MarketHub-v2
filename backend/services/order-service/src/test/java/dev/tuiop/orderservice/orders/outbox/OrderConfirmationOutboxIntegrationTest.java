@@ -142,6 +142,40 @@ class OrderConfirmationOutboxIntegrationTest {
     }
 
     @Test
+    void repeatedCompletionKeepsTheOriginalConfirmation() {
+        Order pending = pendingOrder();
+        complete(pending);
+        var original = outbox.findById(pending.getId()).orElseThrow();
+
+        Order paid = complete(pending);
+
+        var repeated = outbox.findById(paid.getId()).orElseThrow();
+        assertThat(paid.getStatus()).isEqualTo(OrderStatus.PAID);
+        assertThat(paid.getOrderItems()).hasSize(1);
+        assertThat(outbox.count()).isEqualTo(1);
+        assertThat(repeated.getPayload()).isEqualTo(original.getPayload());
+        assertThat(repeated.getCreatedAt()).isEqualTo(original.getCreatedAt());
+        verifyNoInteractions(publisher);
+    }
+
+    @Test
+    void repeatedCompletionDoesNotMakeAPublishedEventPendingAgain() throws Exception {
+        Order pending = pendingOrder();
+        complete(pending);
+        doReturn(CompletableFuture.completedFuture(null)).when(publisher).publishOrderConfirmed(any());
+        outboxPublisher.publish(pending.getId());
+        var original = outbox.findById(pending.getId()).orElseThrow();
+
+        complete(pending);
+
+        var repeated = outbox.findById(pending.getId()).orElseThrow();
+        assertThat(outbox.count()).isEqualTo(1);
+        assertThat(repeated.getPayload()).isEqualTo(original.getPayload());
+        assertThat(repeated.getPublishedAt()).isEqualTo(original.getPublishedAt()).isNotNull();
+        verify(publisher, times(1)).publishOrderConfirmed(any());
+    }
+
+    @Test
     void failedOutboxInsertRollsBackPaidStatus() {
         Order pending = pendingOrder();
         jdbc.execute("alter table order_confirmation_outbox add constraint reject_insert check (false)");

@@ -6,6 +6,7 @@ import dev.tuiop.orderservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.orderservice.external.customers.CustomerResponse;
 import dev.tuiop.orderservice.orders.Order;
 import dev.tuiop.orderservice.orders.OrderRepository;
+import dev.tuiop.orderservice.orders.enums.OrderStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,14 @@ public class OrderPaymentCompletionService {
     public Order markPaidAndQueueConfirmation(UUID orderId, CustomerResponse customer) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException(Order.class, orderId));
+        // A previous attempt may have committed while its acknowledgement was lost.
+        if (order.getStatus() == OrderStatus.PAID) {
+            if (!outboxRepository.existsById(orderId)) {
+                throw new IllegalStateException("Paid order has no confirmation event: " + orderId);
+            }
+            order.getOrderItems().size();
+            return order;
+        }
         order.markPaid();
 
         var items = order.getOrderItems().stream()

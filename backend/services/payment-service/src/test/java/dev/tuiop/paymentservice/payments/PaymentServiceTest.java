@@ -1,5 +1,6 @@
 package dev.tuiop.paymentservice.payments;
 
+import dev.tuiop.paymentservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.paymentservice.payments.dto.CreatePaymentRequest;
 import dev.tuiop.paymentservice.payments.enums.PaymentMethod;
 import dev.tuiop.paymentservice.payments.enums.PaymentStatus;
@@ -14,6 +15,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -83,5 +85,28 @@ class PaymentServiceTest {
         assertEquals(PaymentMethod.QR, result.getMethod());
         assertEquals(PaymentStatus.FAILED, result.getStatus());
         verify(paymentRepository).save(result);
+    }
+
+    @Test
+    void shouldRefundByOrderIdWithoutKnowingPaymentId() {
+        UUID orderId = UUID.randomUUID();
+        Payment payment = Payment.builder().id(UUID.randomUUID()).orderId(orderId)
+                .status(PaymentStatus.SUCCEEDED).build();
+        when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
+
+        Payment result = paymentService.cancelOrRefundByOrderId(orderId);
+
+        assertSame(payment, result);
+        assertEquals(PaymentStatus.REFUNDED, result.getStatus());
+        verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldNotTreatMissingPaymentAsConfirmedCancellation() {
+        UUID orderId = UUID.randomUUID();
+        when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () -> paymentService.cancelOrRefundByOrderId(orderId));
+        verify(paymentRepository, never()).save(any());
     }
 }

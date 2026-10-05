@@ -36,4 +36,10 @@ public class InternalPaymentController {
         Payment payment = paymentService.cancelOrRefundByPaymentId(paymentId);
         return paymentMapper.toResultResponse(payment);
     }
+
+    @PostMapping("/by-order/{orderId}/cancel-or-refund")
+    public PaymentResultResponse cancelOrRefundByOrderId(@PathVariable UUID orderId) {
+        Payment payment = paymentService.cancelOrRefundByOrderId(orderId);
+        return paymentMapper.toResultResponse(payment);
+    }
 }
