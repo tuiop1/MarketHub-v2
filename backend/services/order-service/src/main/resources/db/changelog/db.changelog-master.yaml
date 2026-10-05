@@ -7,3 +7,5 @@ databaseChangeLog:
       file: db/changelog/changes/2026-07-10-002-collapse-order-status.yaml
   - include:
       file: db/changelog/changes/2026-07-12-001-add-saga-order-columns.yaml
+  - include:
+      file: db/changelog/changes/2026-10-05-001-create-order-confirmation-outbox.yaml

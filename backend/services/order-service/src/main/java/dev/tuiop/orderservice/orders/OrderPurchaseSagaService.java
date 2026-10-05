@@ -1,15 +1,13 @@
 package dev.tuiop.orderservice.orders;
 
-import dev.tuiop.commonevents.OrderConfirmedEvent;
-import dev.tuiop.commonevents.OrderConfirmedItemSnapshot;
 import dev.tuiop.orderservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.orderservice.external.customers.AccountCustomerClient;
 import dev.tuiop.orderservice.external.customers.CustomerResponse;
 import dev.tuiop.orderservice.external.customers.exceptions.AccountServiceException;
-import dev.tuiop.orderservice.kafka.OrderNotificationEventPublisher;
 import dev.tuiop.orderservice.orders.dto.PurchaseItemRequest;
 import dev.tuiop.orderservice.orders.dto.PurchaseRequest;
 import dev.tuiop.orderservice.orders.enums.OrderStatus;
+import dev.tuiop.orderservice.orders.outbox.OrderPaymentCompletionService;
 import dev.tuiop.orderservice.external.payments.CreatePaymentRequest;
 import dev.tuiop.orderservice.external.payments.PaymentMethod;
 import dev.tuiop.orderservice.external.payments.PaymentResultResponse;
@@ -31,7 +29,6 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 
-import java.time.Instant;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -47,7 +44,8 @@ public class OrderPurchaseSagaService {
     private final AccountCustomerClient accountCustomerClient;
     private final CatalogStockReservationClient catalogStockReservationClient;
     private final PaymentServiceClient paymentServiceClient;
-    private final OrderNotificationEventPublisher eventPublisher;
+    private final OrderPaymentCompletionService paymentCompletionService;
+
     public Order purchase(Jwt jwt, PurchaseRequest purchaseRequest) {
         UUID stockReservationId = UUID.randomUUID();
 
@@ -103,11 +101,9 @@ public class OrderPurchaseSagaService {
 
                 commitStockSafely(stockReservationId);
 
-
-
-                Order paidOrder = markPaid(order.getId());
-
-                publishOrderConfirmedEvent(order, customerResponse);
+                // includes sending notification
+                Order paidOrder = paymentCompletionService.markPaidAndQueueConfirmation(
+                        order.getId(), customerResponse);
 
                 log.info(
                         "Order paid: orderId={}, paymentId={}, stockReservationId={}, totalPriceCents={}",
@@ -131,34 +127,6 @@ public class OrderPurchaseSagaService {
         }
     }
 
-
-    private void publishOrderConfirmedEvent(Order order, CustomerResponse customer){
-
-        List<OrderConfirmedItemSnapshot> items = order.getOrderItems().stream()
-                        .map(item -> new OrderConfirmedItemSnapshot(
-                                item.getProductId(),
-                                item.getProductNameSnapshot(),
-                                item.getQuantity(),
-                                item.getPriceSnapshotCents(),
-                                item.getTotalPriceSnapshotCents()
-                        )).toList();
-
-        eventPublisher.publishOrderConfirmed(
-                new OrderConfirmedEvent(
-                        order.getId(),
-                        order.getCustomerId(),
-                        customer.email(),
-                        customer.firstName(),
-                        order.getTotalPriceCents(),
-                        items,
-                        Instant.now()
-
-                )
-        );
-
-
-
-    }
 
     //compensation logic
 
@@ -260,12 +228,6 @@ public class OrderPurchaseSagaService {
         return orderRepository.save(order);
     }
 
-
-    public Order markPaid(UUID orderId) {
-        Order order = getOrder(orderId);
-        order.markPaid();
-        return orderRepository.save(order);
-    }
 
     public Order markPaymentFailed(UUID orderId, String reason) {
         Order order = getOrder(orderId);
