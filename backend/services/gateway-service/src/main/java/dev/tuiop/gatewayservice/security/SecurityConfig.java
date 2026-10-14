@@ -1,50 +1,54 @@
 package dev.tuiop.gatewayservice.security;
 
 import dev.tuiop.gatewayservice.security.keycloak.KeycloakRealmRoleConverter;
+import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
-import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
-import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
-@EnableWebFluxSecurity
+@EnableWebSecurity
 public class SecurityConfig {
 
     @Bean
-    public SecurityWebFilterChain securityWebFilterChain(
-            ServerHttpSecurity http,
-            ReactiveJwtAuthenticationConverterAdapter jwtAuthenticationConverter
-    ) {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            JwtAuthenticationConverter jwtAuthenticationConverter
+    ) throws Exception {
         return http
-                .csrf(ServerHttpSecurity.CsrfSpec::disable)
-                .authorizeExchange(auth -> auth
-                        .pathMatchers("/internal/**").denyAll()
-                        .pathMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        // Preserve error statuses when MVC dispatches a failed request to /error.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+                        .requestMatchers("/internal/**").denyAll()
+                        .requestMatchers("/actuator/health", "/actuator/info", "/actuator/prometheus").permitAll()
 
-                        .pathMatchers(HttpMethod.POST,
+                        .requestMatchers(HttpMethod.POST,
                                 "/api/v1/auth/customers/register",
                                 "/api/v1/auth/merchants/register").permitAll()
 
-                        .pathMatchers(HttpMethod.GET, "/api/v1/customers/me")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/customers/me")
                         .hasRole("CUSTOMER")
-                        .pathMatchers(HttpMethod.GET, "/api/v1/merchants/me")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/merchants/me")
                         .hasAnyRole("MERCHANT_PENDING", "MERCHANT", "MERCHANT_REJECTED")
-                        .pathMatchers("/api/v1/merchants/**").permitAll()
+                        .requestMatchers("/api/v1/merchants/**").permitAll()
 
-                        .pathMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
-                        .pathMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/products/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/categories/**").permitAll()
 
-                        .pathMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        .pathMatchers("/api/v1/merchant/products/**").hasRole("MERCHANT")
-                        .pathMatchers(
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/v1/merchant/products/**").hasRole("MERCHANT")
+                        .requestMatchers(
                                 "/api/v1/carts/**",
                                 "/api/v1/orders/**").hasRole("CUSTOMER")
 
-                        .anyExchange().authenticated()
+                        .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter))
@@ -53,10 +57,10 @@ public class SecurityConfig {
     }
 
     @Bean
-    public ReactiveJwtAuthenticationConverterAdapter jwtAuthenticationConverter() {
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(new KeycloakRealmRoleConverter());
         converter.setPrincipalClaimName("sub");
-        return new ReactiveJwtAuthenticationConverterAdapter(converter);
+        return converter;
     }
 }
