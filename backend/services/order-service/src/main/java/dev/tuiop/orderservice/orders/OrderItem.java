@@ -1,7 +1,7 @@
 package dev.tuiop.orderservice.orders;
 
 
-import dev.tuiop.orderservice.external.products.ProductResponse;
+import dev.tuiop.orderservice.external.products.StockReservationItemResponse;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -62,18 +62,18 @@ public class OrderItem {
         }
     }
 
-    public static OrderItem fromProduct(ProductResponse product, Integer quantity){
+    public static OrderItem fromReservation(StockReservationItemResponse item, Integer quantity){
 
         if(quantity <= 0) throw new IllegalArgumentException("Quantity of products must be positive ");
 
         return OrderItem.builder()
-                .productId(product.id())
-                .merchantId(product.merchantId())
-                .productNameSnapshot(product.name())
-                .merchantNameSnapshot(product.merchantName())
-                .priceSnapshotCents(product.priceCents())
+                .productId(item.productId())
+                .merchantId(item.merchantId())
+                .productNameSnapshot(item.productName())
+                .merchantNameSnapshot("")
+                .priceSnapshotCents(item.unitPriceCents())
                 .quantity(quantity)
-                .totalPriceSnapshotCents(Math.multiplyExact(quantity, product.priceCents()))
+                .totalPriceSnapshotCents(Math.multiplyExact(quantity, item.unitPriceCents()))
                 .build();
     }
 

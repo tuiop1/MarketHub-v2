@@ -3,6 +3,8 @@ package dev.tuiop.paymentservice.payments.internal;
 import dev.tuiop.paymentservice.common.exceptions.ResourceNotFoundException;
 import dev.tuiop.paymentservice.payments.Payment;
 import dev.tuiop.paymentservice.payments.PaymentService;
+import dev.tuiop.paymentservice.payments.dto.PaymentResultResponse;
+import dev.tuiop.paymentservice.payments.enums.PaymentStatus;
 import dev.tuiop.paymentservice.payments.mapper.PaymentMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,5 +68,20 @@ class InternalPaymentControllerMvcTests {
                 ));
 
         verifyNoInteractions(paymentMapper);
+    }
+
+    @Test
+    void refundByOrderIdReturnsRefundedPayment() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        UUID paymentId = UUID.randomUUID();
+        Payment payment = Payment.builder().id(paymentId).orderId(orderId).status(PaymentStatus.REFUNDED).build();
+        when(paymentService.cancelOrRefundByOrderId(orderId)).thenReturn(payment);
+        when(paymentMapper.toResultResponse(payment))
+                .thenReturn(new PaymentResultResponse(paymentId, PaymentStatus.REFUNDED, "Refunded"));
+
+        mockMvc.perform(post("/internal/v1/payments/by-order/{orderId}/cancel-or-refund", orderId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paymentId").value(paymentId.toString()))
+                .andExpect(jsonPath("$.status").value("REFUNDED"));
     }
 }

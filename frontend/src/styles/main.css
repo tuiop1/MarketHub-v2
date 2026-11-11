@@ -1,0 +1,16 @@
+/* Order is part of the styling contract; component styles remain Angular-scoped. */
+@layer tokens, reset, base, layout, components, utilities, accessibility;
+@import '@fontsource-variable/plus-jakarta-sans' layer(base);
+@import './tokens.css' layer(tokens);
+@import './reset.css' layer(reset);
+@import './base.css' layer(base);
+@import './layout.css' layer(layout);
+@import './components/buttons.css' layer(components);
+@import './components/forms.css' layer(components);
+@import './components/notices.css' layer(components);
+@import './components/badges.css' layer(components);
+@import './components/navigation.css' layer(components);
+@import './components/tables.css' layer(components);
+@import './components/directory.css' layer(components);
+@import './utilities.css' layer(utilities);
+@import './accessibility.css' layer(accessibility);

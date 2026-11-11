@@ -108,6 +108,13 @@ public class Order {
         this.paymentId = paymentId;
     }
 
+    public void markPendingPayment() {
+        if (status != OrderStatus.PENDING_RESERVATION) {
+            throw new IllegalStateException("Order is not pending reservation");
+        }
+        status = OrderStatus.PENDING_PAYMENT;
+    }
+
     public void markPaid() {
         if (status != OrderStatus.PENDING_PAYMENT) {
             throw new IllegalStateException("Order is not pending payment");

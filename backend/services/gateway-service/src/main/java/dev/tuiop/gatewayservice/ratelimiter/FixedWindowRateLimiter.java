@@ -1,32 +1,30 @@
 package dev.tuiop.gatewayservice.ratelimiter;
 
-import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 
 @Service
 public class FixedWindowRateLimiter {
 
-    private final ReactiveStringRedisTemplate redisTemplate;
+    private final StringRedisTemplate redisTemplate;
 
-    public FixedWindowRateLimiter(ReactiveStringRedisTemplate redisTemplate) {
+    public FixedWindowRateLimiter(StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;
     }
 
-    public Mono<Boolean> allowRequest(String clientId, int limit, Duration windowSize) {
+    public boolean allowRequest(String clientId, int limit, Duration windowSize) {
         long windowIndex = System.currentTimeMillis() / windowSize.toMillis();
         String key = "rate:%s:%s".formatted(clientId, windowIndex);
 
-        return redisTemplate.opsForValue()
-                .increment(key)
-                .flatMap(count -> {
-                    if (count == 1L) {
-                        return redisTemplate.expire(key, windowSize)
-                                .thenReturn(count <= limit);
-                    }
-                    return Mono.just(count <= limit);
-                });
+        Long count = redisTemplate.opsForValue().increment(key);
+        if (count == null) {
+            throw new IllegalStateException("Redis did not return a rate-limit counter");
+        }
+        if (count == 1L) {
+            redisTemplate.expire(key, windowSize);
+        }
+        return count <= limit;
     }
 }

@@ -1,0 +1,42 @@
+databaseChangeLog:
+  - changeSet:
+      id: 2026-10-05-001-create-order-confirmation-outbox
+      author: tuiop
+      changes:
+        - createTable:
+            tableName: order_confirmation_outbox
+            columns:
+              - column:
+                  name: order_id
+                  type: uuid
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: pk_order_confirmation_outbox
+              - column:
+                  name: payload
+                  type: text
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: timestamp with time zone
+                  constraints:
+                    nullable: false
+              - column:
+                  name: published_at
+                  type: timestamp with time zone
+        - addForeignKeyConstraint:
+            baseTableName: order_confirmation_outbox
+            baseColumnNames: order_id
+            referencedTableName: orders
+            referencedColumnNames: id
+            constraintName: fk_order_confirmation_outbox_order
+        - sql:
+            sql: >-
+              CREATE INDEX idx_order_confirmation_outbox_pending
+              ON order_confirmation_outbox (created_at, order_id)
+              WHERE published_at IS NULL
+      rollback:
+        - dropTable:
+            tableName: order_confirmation_outbox

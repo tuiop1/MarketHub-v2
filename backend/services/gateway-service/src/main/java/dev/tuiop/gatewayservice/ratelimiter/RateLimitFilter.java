@@ -2,22 +2,20 @@ package dev.tuiop.gatewayservice.ratelimiter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.tuiop.commonapi.ApiError;
-import org.springframework.cloud.gateway.filter.GatewayFilterChain;
-import org.springframework.cloud.gateway.filter.GlobalFilter;
-import org.springframework.core.Ordered;
+import org.springframework.cloud.gateway.server.mvc.common.MvcUtils;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
-import org.springframework.web.server.ServerWebExchange;
-import reactor.core.publisher.Mono;
+import org.springframework.web.servlet.function.HandlerFilterFunction;
+import org.springframework.web.servlet.function.HandlerFunction;
+import org.springframework.web.servlet.function.ServerRequest;
+import org.springframework.web.servlet.function.ServerResponse;
 
-import java.net.InetSocketAddress;
 import java.time.Instant;
-import java.util.Optional;
 
 @Component
-public class RateLimitFilter implements GlobalFilter, Ordered {
+public class RateLimitFilter implements HandlerFilterFunction<ServerResponse, ServerResponse> {
 
     private final FixedWindowRateLimiter fixedWindowRateLimiter;
     private final RateLimitProperties rateLimitProperties;
@@ -33,58 +31,46 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
         this.objectMapper = objectMapper;
     }
 
-    @Override
-    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        if (!rateLimitProperties.enabled()) {
-            return chain.filter(exchange);
-        }
-
-        String client = clientIp(exchange);
-
-        return fixedWindowRateLimiter
-                .allowRequest(client, rateLimitProperties.requestLimit(), rateLimitProperties.windowSize())
-                .flatMap(allowed -> allowed ? chain.filter(exchange) : reject(exchange));
+    // Spring Cloud Gateway discovers this factory for the YAML route filter.
+    public static HandlerFilterFunction<ServerResponse, ServerResponse> fixedWindowRateLimit() {
+        return (request, next) -> MvcUtils.getApplicationContext(request)
+                .getBean(RateLimitFilter.class)
+                .filter(request, next);
     }
 
-    private String clientIp(ServerWebExchange exchange) {
-        String forwardedIp = exchange.getRequest().getHeaders().getFirst("X-Real-IP");
+    @Override
+    public ServerResponse filter(ServerRequest request, HandlerFunction<ServerResponse> next) throws Exception {
+        if (!rateLimitProperties.enabled()) {
+            return next.handle(request);
+        }
+
+        boolean allowed = fixedWindowRateLimiter.allowRequest(
+                clientIp(request), rateLimitProperties.requestLimit(), rateLimitProperties.windowSize());
+        return allowed ? next.handle(request) : reject(request);
+    }
+
+    private String clientIp(ServerRequest request) {
+        String forwardedIp = request.headers().firstHeader("X-Real-IP");
         if (forwardedIp != null && !forwardedIp.isBlank()) {
             return forwardedIp.trim();
         }
 
-        return Optional.ofNullable(exchange.getRequest().getRemoteAddress())
-                .map(InetSocketAddress::getAddress)
-                .map(address -> address.getHostAddress())
-                .orElse("unknown");
+        String remoteAddress = request.servletRequest().getRemoteAddr();
+        return remoteAddress != null ? remoteAddress : "unknown";
     }
 
-    private Mono<Void> reject(ServerWebExchange exchange) {
+    private ServerResponse reject(ServerRequest request) throws Exception {
         ApiError apiError = new ApiError(
                 Instant.now(),
                 HttpStatus.TOO_MANY_REQUESTS.value(),
                 HttpStatus.TOO_MANY_REQUESTS.getReasonPhrase(),
                 "Too many requests. Please try again later.",
-                exchange.getRequest().getPath().value()
+                request.path()
         );
 
-        ServerHttpResponse response = exchange.getResponse();
-        response.setStatusCode(HttpStatus.TOO_MANY_REQUESTS);
-        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
-        response.getHeaders().set(
-                "Retry-After",
-                String.valueOf(rateLimitProperties.windowSize().toSeconds())
-        );
-
-        try {
-            byte[] body = objectMapper.writeValueAsBytes(apiError);
-            return response.writeWith(Mono.just(response.bufferFactory().wrap(body)));
-        } catch (Exception exception) {
-            return Mono.error(exception);
-        }
-    }
-
-    @Override
-    public int getOrder() {
-        return Ordered.HIGHEST_PRECEDENCE;
+        return ServerResponse.status(HttpStatus.TOO_MANY_REQUESTS)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(rateLimitProperties.windowSize().toSeconds()))
+                .body(objectMapper.writeValueAsBytes(apiError));
     }
 }

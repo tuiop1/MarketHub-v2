@@ -80,6 +80,18 @@ public class PaymentService {
 
         Payment payment = paymentRepository.findById(paymentId).orElseThrow(() -> new ResourceNotFoundException(Payment.class, paymentId));
 
+        return cancelOrRefund(payment);
+    }
+
+    @Transactional
+    public Payment cancelOrRefundByOrderId(UUID orderId) {
+        Payment payment = paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException(Payment.class, "orderId", orderId));
+        return cancelOrRefund(payment);
+    }
+
+    private Payment cancelOrRefund(Payment payment) {
+
         PaymentStatus previousStatus = payment.getStatus();
         payment.cancelOrRefund();
 
