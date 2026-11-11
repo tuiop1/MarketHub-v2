@@ -1,0 +1,93 @@
+.market-intro {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: var(--space-12);
+  padding: 2.375rem 0 2.625rem;
+  border-bottom: 1px solid var(--color-border);
+  align-items: center;
+}
+.market-intro h1 {
+  max-width: 40.625rem;
+  font-size: clamp(var(--font-size-38), 4.5vw, var(--font-size-58));
+  line-height: var(--line-height-display);
+  letter-spacing: var(--tracking-tight);
+}
+.market-intro p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-15);
+  line-height: var(--line-height-relaxed);
+  margin-bottom: var(--space-6-5);
+}
+.intro-aside {
+  background: var(--color-promotion-surface);
+  padding: 2.375rem;
+  border-radius: var(--radius-4xl);
+  min-height: 16.875rem;
+  display: flex;
+  align-items: start;
+  flex-direction: column;
+  justify-content: center;
+  color: var(--color-action-hover);
+}
+.intro-aside mh-icon {
+  width: 2.375rem;
+  height: 2.375rem;
+  margin-bottom: var(--space-5);
+}
+.intro-aside h2 {
+  font-size: var(--font-size-29);
+  line-height: var(--line-height-title);
+  margin-bottom: var(--space-5);
+}
+.intro-aside a {
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-650);
+}
+.direct-checkout {
+  max-width: 38.75rem;
+  margin: var(--space-12) auto 0;
+}
+@media (max-width: 700px) {
+  .market-intro {
+    grid-template-columns: 1fr;
+    gap: var(--space-7);
+    padding: var(--space-3) 0 var(--space-8);
+  }
+  .intro-aside {
+    min-height: 0;
+    padding: var(--space-6-5);
+  }
+  .intro-aside h2 {
+    font-size: var(--font-size-23);
+  }
+  .market-intro h1 {
+    font-size: var(--font-size-42);
+  }
+}
+@media (max-width: 480px) {
+  .intro-aside {
+    display: none;
+  }
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-7) var(--space-6);
+}
+@media (min-width: 1300px) {
+  .product-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-5-5) var(--space-4);
+  }
+}
+@media (max-width: 480px) {
+  .product-grid {
+    grid-template-columns: 1fr;
+  }
+}

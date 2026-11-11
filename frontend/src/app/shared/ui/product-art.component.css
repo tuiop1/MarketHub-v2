@@ -1,0 +1,46 @@
+:host {
+  display: block;
+}
+.product-art {
+  min-height: 11.25rem;
+  aspect-ratio: 1.5;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-3-5);
+  background: var(--color-surface-accent);
+  color: var(--color-product-plum);
+  border-radius: var(--radius-xl);
+}
+mh-icon {
+  width: 4rem;
+  height: 4rem;
+}
+span {
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-600);
+}
+.compact {
+  min-height: 0;
+  aspect-ratio: 1;
+  gap: 0;
+}
+.compact mh-icon {
+  width: 2rem;
+  height: 2rem;
+}
+.compact span {
+  display: none;
+}
+.tone-sage {
+  background: var(--color-product-sage-surface);
+  color: var(--color-product-sage);
+}
+.tone-sand {
+  background: var(--color-product-sand-surface);
+  color: var(--color-product-sand);
+}
+.tone-rose {
+  background: var(--color-product-rose-surface);
+  color: var(--color-product-rose);
+}

@@ -1,0 +1,140 @@
+:root {
+  /* Color */
+  --color-text: #2e2735;
+  --color-text-muted: #6c6271;
+  --color-action: #624175;
+  --color-action-hover: #4e325e;
+  --color-brand-accent: #e6b956;
+  --color-page: #f6f4f5;
+  --color-surface: #ffffff;
+  --color-border: #dfd9e2;
+  --color-surface-accent: #eee8f2;
+  --color-danger: #a32b3e;
+  --color-focus: #a577bd;
+  --color-input-border: #bfb4c5;
+  --color-placeholder: #786b7d;
+  --color-scrollbar: #b9a8c2;
+  --color-selection: #e9d7f3;
+  --color-selection-text: #382343;
+  --color-danger-button: #f9e9ec;
+  --color-danger-button-hover: #f2d4da;
+  --color-danger-surface: #fae9ed;
+  --color-danger-text: #852036;
+  --color-danger-badge: #fae8eb;
+  --color-success-surface: #e6efe9;
+  --color-success-text: #28583d;
+  --color-success-badge: #e2eee6;
+  --color-success-badge-text: #285a3d;
+  --color-warning-surface: #f4ecd4;
+  --color-warning-text: #6e500c;
+  --color-warning-badge: #f5ecd3;
+  --color-warning-badge-text: #6d4f08;
+  --color-empty-border: #cfc3d5;
+  --color-card-border-hover: #a88bb9;
+  --color-table-heading: #f0ecf3;
+  --color-promotion-surface: #e9dfee;
+  --color-product-plum: #624876;
+  --color-product-sage-surface: #e4ebe5;
+  --color-product-sage: #47634d;
+  --color-product-sand-surface: #f0e8d7;
+  --color-product-sand: #78612e;
+  --color-product-rose-surface: #f1e3e5;
+  --color-product-rose: #86535b;
+  --color-overlay: #21182a88;
+  --color-shadow: #21182a40;
+  --color-on-action: #fff;
+
+  /* Typography */
+  --font-family-body: 'Plus Jakarta Sans Variable', sans-serif;
+  --font-size-11: 0.6875rem;
+  --font-size-12: 0.75rem;
+  --font-size-13: 0.8125rem;
+  --font-size-14: 0.875rem;
+  --font-size-15: 0.9375rem;
+  --font-size-16: 1rem;
+  --font-size-17: 1.0625rem;
+  --font-size-18: 1.125rem;
+  --font-size-19: 1.1875rem;
+  --font-size-20: 1.25rem;
+  --font-size-22: 1.375rem;
+  --font-size-23: 1.4375rem;
+  --font-size-24: 1.5rem;
+  --font-size-28: 1.75rem;
+  --font-size-29: 1.8125rem;
+  --font-size-30: 1.875rem;
+  --font-size-32: 2rem;
+  --font-size-34: 2.125rem;
+  --font-size-36: 2.25rem;
+  --font-size-38: 2.375rem;
+  --font-size-42: 2.625rem;
+  --font-size-52: 3.25rem;
+  --font-size-58: 3.625rem;
+  --font-weight-400: 400;
+  --font-weight-500: 500;
+  --font-weight-600: 600;
+  --font-weight-650: 650;
+  --font-weight-700: 700;
+  --font-weight-750: 750;
+  --font-weight-800: 800;
+  --line-height-none: 1;
+  --line-height-display: 1.13;
+  --line-height-heading: 1.2;
+  --line-height-title: 1.28;
+  --line-height-compact: 1.4;
+  --line-height-label: 1.6;
+  --line-height-body: 1.65;
+  --line-height-relaxed: 1.8;
+  --tracking-tight: -0.04em;
+  --tracking-display: -0.035em;
+  --tracking-heading: -0.025em;
+  --tracking-compact: -0.02em;
+
+  /* Spacing */
+  --space-0-5: 0.125rem;
+  --space-0-75: 0.1875rem;
+  --space-1: 0.25rem;
+  --space-1-5: 0.375rem;
+  --space-2: 0.5rem;
+  --space-2-5: 0.625rem;
+  --space-3: 0.75rem;
+  --space-3-5: 0.875rem;
+  --space-4: 1rem;
+  --space-4-5: 1.125rem;
+  --space-5: 1.25rem;
+  --space-5-5: 1.375rem;
+  --space-6: 1.5rem;
+  --space-6-5: 1.625rem;
+  --space-7: 1.75rem;
+  --space-7-5: 1.875rem;
+  --space-8: 2rem;
+  --space-9: 2.25rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-14: 3.5rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+
+  /* Shape */
+  --radius-xs: 0.3125rem;
+  --radius-sm: 0.4375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 0.875rem;
+  --radius-3xl: 1rem;
+  --radius-4xl: 1.125rem;
+
+  /* Layout */
+  --layout-header-width: 85rem;
+  --layout-content-width: 81rem;
+  --layout-inner-width: 77rem;
+
+  /* Interactive control sizes */
+  --control-height: 2.75rem;
+  --control-height-compact: 2.5rem;
+  --control-checkbox-size: 1.25rem;
+
+  /* Motion and elevation */
+  --duration-fast: 160ms;
+  --shadow-dialog: 0 1.25rem 5rem var(--color-shadow);
+}

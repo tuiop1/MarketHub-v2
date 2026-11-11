@@ -1,0 +1,41 @@
+.product-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-14);
+  align-items: start;
+}
+h1 {
+  margin: var(--space-4-5) 0;
+  font-size: var(--font-size-38);
+}
+.detail-price {
+  font-size: var(--font-size-28);
+}
+.media-note {
+  margin: var(--space-3-5) 0;
+}
+.product-details mh-product-art {
+  width: 100%;
+}
+.purchase-controls {
+  margin-top: var(--space-7-5);
+}
+.purchase-controls label {
+  max-width: 7.5rem;
+}
+.purchase-controls .actions {
+  margin-top: var(--space-4-5);
+}
+.product-checkout {
+  max-width: 37.5rem;
+  margin: var(--space-10) 0 0 auto;
+}
+@media (max-width: 800px) {
+  .product-details {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+  h1 {
+    font-size: var(--font-size-30);
+  }
+}

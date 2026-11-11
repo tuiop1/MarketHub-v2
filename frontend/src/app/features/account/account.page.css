@@ -1,0 +1,12 @@
+.workspace-links {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.shop-description {
+  margin-top: var(--space-5);
+}
+
+.profile-edit-note {
+  margin-top: var(--space-6);
+}

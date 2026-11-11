@@ -1,0 +1,29 @@
+.registration {
+  max-width: 51.875rem;
+  margin: auto;
+}
+.registration-intro {
+  margin-bottom: var(--space-7-5);
+}
+.registration-intro h1 {
+  font-size: var(--font-size-38);
+}
+.registration-intro p {
+  color: var(--color-text-muted);
+}
+.form-section {
+  margin-top: var(--space-7-5);
+  padding-top: var(--space-7);
+  border-top: 1px solid var(--color-border);
+}
+.registration .tab-nav {
+  margin-bottom: var(--space-7-5);
+}
+
+.password-hint {
+  margin-top: var(--space-3);
+}
+
+.registration-actions {
+  margin-top: var(--space-7);
+}

@@ -1,0 +1,15 @@
+dialog {
+  width: min(27.5rem, calc(100% - 2rem));
+  border: 0;
+  border-radius: var(--radius-3xl);
+  padding: var(--space-7);
+  color: var(--color-text);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-dialog);
+}
+dialog::backdrop {
+  background: var(--color-overlay);
+}
+h2 {
+  margin-top: 0;
+}
