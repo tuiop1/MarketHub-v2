@@ -7,3 +7,5 @@ Public catalog sorting/pagination, direct product refresh and category navigatio
 The normal frontend at :3000 continues to use the actual gateway :8080 and Keycloak :8090. The backend stack was unavailable during this task; see REBUILD_NOTES.md for the complete verification status.
 
 `css-refactor-mobile.jpg` records the actual registration page after the CSS architecture refactor. It uses no fixture records. The refactor preserved all 132 sampled desktop computed-style values; mobile form/validation and catalog controls were checked at CSS width 390 without horizontal overflow.
+
+The catalog capture was refreshed for the text-only product layout. `product-details-text-only-fixtures.jpg` shows the corresponding desktop details and purchase blocks, using the same isolated fixture API. Neither screenshot contains product-image placeholders. These captures verify presentation; they do not claim live backend integration.

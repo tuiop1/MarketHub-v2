@@ -8,7 +8,7 @@ Plus Jakarta Sans is self-hosted from the bundled font package. Strong rounded l
 
 Public surfaces use a generous top navigation, a concise marketplace introduction, then product-first grids. Management surfaces use the same navigation, a local tab bar and compact tables or forms. No advertising claims, invented stock, testimonials, ratings or photos.
 
-Product media uses a consistent box symbol over four quiet colors keyed by the product ID. These are placeholders, never product photographs. Controls use the same hand-authored SVG stroke family.
+Products are presented as text-only blocks: name, description, price, stock and actions. Product cards, details and cart rows have no images, placeholder illustrations, media captions or reserved image space. The backend has no product-image contract, and the user explicitly requested no visual substitutes. Controls retain the hand-authored SVG stroke family.
 
 The earlier blue-and-white direction was discarded after user feedback. The design avoids the original cream/green visual world, pill-shaped uppercase metadata, decorative gradients and giant metrics. Its identity lives in type, plum color, ochre mark and clear spacing; workflows retain familiar controls.
 

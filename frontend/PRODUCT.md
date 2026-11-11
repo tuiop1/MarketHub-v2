@@ -28,7 +28,7 @@ MarketHub name. Professional, polished, modern marketplace with restrained effec
 
 ## Evidence on Hand
 
-The complete local Java source and original Angular client. No product image contract or supplied visual assets. Payments are simulated. No testimonials or marketplace performance claims are supplied.
+The complete local Java source and original Angular client. No product image contract or supplied visual assets. The user requires text-only product blocks: no product images, image placeholders, illustrations or reserved media areas. Payments are simulated. No testimonials or marketplace performance claims are supplied.
 
 ## Product Principles
 

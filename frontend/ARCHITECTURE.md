@@ -31,7 +31,7 @@ src/
       models/                    Spring Page shape and pagination parameters
       state/                     cancelable read resources and local mutation state
       ui/                        icons, feedback, loading/empty states, fields, money,
-                                 pagination, product placeholders, confirmation, 404
+                                 pagination, confirmation, 404
       utilities/                 nonblank, integer and past-date validators
     testing/                     test-only fixtures and cross-feature API contract tests
 ```

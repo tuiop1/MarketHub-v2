@@ -2,13 +2,11 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { RouterLink } from '@angular/router';
 import { CartItem } from './data-access/cart-api.service';
 import { MoneyPipe } from '../../shared/ui/money.pipe';
-import { ProductArtComponent } from '../../shared/ui/product-art.component';
 @Component({
   selector: 'mh-cart-item',
-  imports: [RouterLink, MoneyPipe, ProductArtComponent],
+  imports: [RouterLink, MoneyPipe],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: ` <article class="cart-item">
-    <mh-product-art [seed]="item().productId" [compact]="true" />
     <div class="item-copy">
       <h2>
         <a [routerLink]="['/products', item().productId]">{{ item().productName }}</a>

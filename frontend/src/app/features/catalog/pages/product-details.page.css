@@ -1,39 +1,50 @@
 .product-details {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-14);
+  grid-template-columns: minmax(0, 1.4fr) minmax(18rem, 0.7fr);
+  gap: var(--space-8);
   align-items: start;
 }
+.product-overview,
+.purchase-panel {
+  min-width: 0;
+  padding: var(--space-8);
+  background: var(--color-surface);
+  border-radius: var(--radius-3xl);
+}
 h1 {
-  margin: var(--space-4-5) 0;
+  margin: var(--space-5) 0;
   font-size: var(--font-size-38);
 }
 .detail-price {
+  margin-bottom: var(--space-6);
   font-size: var(--font-size-28);
 }
-.media-note {
-  margin: var(--space-3-5) 0;
+.product-links {
+  margin-top: var(--space-7);
 }
-.product-details mh-product-art {
-  width: 100%;
+.product-purchase {
+  display: grid;
+  gap: var(--space-6);
+  min-width: 0;
 }
-.purchase-controls {
-  margin-top: var(--space-7-5);
+.purchase-panel h2 {
+  margin-bottom: var(--space-5);
+  font-size: var(--font-size-20);
 }
 .purchase-controls label {
   max-width: 7.5rem;
 }
 .purchase-controls .actions {
-  margin-top: var(--space-4-5);
-}
-.product-checkout {
-  max-width: 37.5rem;
-  margin: var(--space-10) 0 0 auto;
+  margin-top: var(--space-5);
 }
 @media (max-width: 800px) {
   .product-details {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-6);
+  }
+  .product-overview,
+  .purchase-panel {
+    padding: var(--space-6);
   }
   h1 {
     font-size: var(--font-size-30);
