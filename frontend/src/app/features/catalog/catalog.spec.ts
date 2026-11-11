@@ -4,9 +4,10 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { ProductListPage } from './pages/product-list.page';
+import { ProductDetailsPage } from './pages/product-details.page';
 import { ProductCardComponent } from './components/product-card.component';
 import { AuthService } from '../../core/auth/auth.service';
-import { product, page, authStub, cartItem } from '../../testing/fixtures';
+import { product, page, authStub, cartItem, order } from '../../testing/fixtures';
 describe('Catalog UI', () => {
   let http: HttpTestingController;
   beforeEach(() => {
@@ -14,7 +15,10 @@ describe('Catalog UI', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        provideRouter([{ path: 'products', component: ProductListPage }]),
+        provideRouter([
+          { path: 'products', component: ProductListPage },
+          { path: 'products/:id', component: ProductDetailsPage },
+        ]),
         { provide: AuthService, useValue: authStub() },
       ],
     });
@@ -30,7 +34,41 @@ describe('Catalog UI', () => {
     expect(fixture.nativeElement.textContent).toContain('Field notebook');
     expect(fixture.nativeElement.textContent).toContain('$12.99');
     expect(fixture.nativeElement.querySelector('mh-product-card')).toBeTruthy();
+    expect(
+      fixture.nativeElement.querySelector('mh-product-art, img, picture, [role="img"]')
+    ).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('Add to cart');
+  });
+  it('renders text-only details and keeps direct checkout functional', async () => {
+    const auth = TestBed.inject(AuthService);
+    auth.authenticated.set(true);
+    auth.roles.set(['CUSTOMER']);
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/products/' + product.id, ProductDetailsPage);
+    http.expectOne('/api/v1/products/' + product.id).flush(product);
+    harness.detectChanges();
+    const element = harness.routeNativeElement;
+    expect(element?.textContent).toContain(product.name);
+    expect(element?.textContent).toContain('$12.99');
+    expect(element?.querySelector('mh-product-art, img, picture, [role="img"]')).toBeNull();
+    expect(element?.textContent).not.toContain('image unavailable');
+    const buttons = Array.from(element?.querySelectorAll('button') || []);
+    buttons.find((button) => button.textContent?.trim() === 'Buy now')?.click();
+    harness.detectChanges();
+    expect(element?.querySelector('.product-purchase mh-checkout')).toBeTruthy();
+    const purchaseButtons = Array.from(element?.querySelectorAll('button') || []);
+    purchaseButtons
+      .find((button) => button.textContent?.includes('Place simulated order'))
+      ?.click();
+    const request = http.expectOne('/api/v1/orders/purchase');
+    expect(request.request.body).toEqual({
+      items: [{ productId: product.id, quantity: 1 }],
+      paymentMethod: 'CARD',
+    });
+    request.flush(order);
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(element?.textContent).toContain('Order paid');
   });
   it('renders an empty state with a useful next action', () => {
     const fixture = TestBed.createComponent(ProductListPage);

@@ -14,7 +14,6 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { detailResource } from '../../../shared/state/detail-resource';
 import { ActionState } from '../../../shared/state/request-state';
 import { FeedbackComponent, LoadingComponent } from '../../../shared/ui/feedback.component';
-import { ProductArtComponent } from '../../../shared/ui/product-art.component';
 import { FieldErrorComponent } from '../../../shared/ui/field-error.component';
 import { MoneyPipe } from '../../../shared/ui/money.pipe';
 import { integer } from '../../../shared/utilities/validators';
@@ -28,7 +27,6 @@ import { startWith } from 'rxjs';
     ReactiveFormsModule,
     FeedbackComponent,
     LoadingComponent,
-    ProductArtComponent,
     MoneyPipe,
     FieldErrorComponent,
     CheckoutComponent,
@@ -42,75 +40,83 @@ import { startWith } from 'rxjs';
     }
     <mh-feedback [error]="resource.state().error" [retryable]="true" (retry)="resource.reload()" />
     @if (resource.state().value; as product) {
-      <div class="product-details">
-        <div>
-          <mh-product-art [seed]="product.id" />
-          <p class="u-text-muted u-text-small media-note">Product image unavailable</p>
-        </div>
-        <section>
+      <article class="product-details">
+        <section class="product-overview" aria-labelledby="product-title">
           <span class="badge" [class.good]="product.stockQuantity > 0">{{
             product.stockQuantity > 0 ? product.stockQuantity + ' in stock' : 'Out of stock'
           }}</span>
-          <h1>{{ product.name }}</h1>
+          <h1 id="product-title">{{ product.name }}</h1>
           <p class="detail-price u-money">{{ product.priceCents | money }}</p>
           <p class="detail-copy">
             {{ product.description || 'No description has been provided for this product.' }}
           </p>
-          <div class="actions">
-            <a [routerLink]="['/merchants', product.merchantId]">View shop</a
-            ><a [routerLink]="['/categories', product.categoryId]">View category</a>
+          <div class="actions product-links">
+            <a [routerLink]="['/merchants', product.merchantId]">View shop</a>
+            <a [routerLink]="['/categories', product.categoryId]">View category</a>
           </div>
-          @if (auth.hasRole('CUSTOMER')) {
-            <form [formGroup]="form" (ngSubmit)="add()" class="purchase-controls">
-              <fieldset [disabled]="checkoutBusy()">
-                <label for="product-quantity"
-                  >Quantity<input
-                    id="product-quantity"
-                    type="number"
-                    [formControl]="quantity"
-                    min="1"
-                    [max]="product.stockQuantity"
-                    step="1"
-                    aria-describedby="quantity-error"
-                /></label>
-                <mh-field-error [control]="quantity" errorId="quantity-error" />
-                <div class="actions">
-                  <button
-                    class="button primary"
-                    type="submit"
-                    [disabled]="action.busy() || checkoutBusy() || !buyable()"
-                  >
-                    {{ action.busy() ? 'Adding…' : 'Add to cart' }}</button><button
-                    class="button subtle"
-                    type="button"
-                    [disabled]="checkoutBusy() || !buyable()"
-                    (click)="openCheckout()"
-                  >
-                    Buy now
-                  </button>
-                </div>
-              </fieldset>
-            </form>
-            <mh-feedback [error]="action.error()" [message]="action.message()" />
-          } @else if (!auth.authenticated()) {
-            <p class="notice">
-              <a routerLink="/login" [queryParams]="{ returnTo: '/products/' + product.id }"
-                >Sign in as a customer</a
-              >
-              to add this product to your cart or buy it.
-            </p>
-          }
         </section>
-      </div>
-      @if (checkoutQuantity(); as amount) {
-        <div class="product-checkout">
-          <mh-checkout
-            [items]="[{ productId: product.id, quantity: amount }]"
-            [total]="product.priceCents * amount"
-            (busyChange)="checkoutBusy.set($event)"
-          />
-        </div>
-      }
+        <aside class="product-purchase" aria-label="Purchase options">
+          <section class="purchase-panel">
+            <h2>Purchase options</h2>
+            @if (auth.hasRole('CUSTOMER')) {
+              <form [formGroup]="form" (ngSubmit)="add()" class="purchase-controls">
+                <fieldset [disabled]="checkoutBusy()">
+                  <label for="product-quantity"
+                    >Quantity
+                    <input
+                      id="product-quantity"
+                      type="number"
+                      [formControl]="quantity"
+                      min="1"
+                      [max]="product.stockQuantity"
+                      step="1"
+                      aria-describedby="quantity-error"
+                    />
+                  </label>
+                  <mh-field-error [control]="quantity" errorId="quantity-error" />
+                  <div class="actions">
+                    <button
+                      class="button primary"
+                      type="submit"
+                      [disabled]="action.busy() || checkoutBusy() || !buyable()"
+                    >
+                      {{ action.busy() ? 'Adding…' : 'Add to cart' }}
+                    </button>
+                    <button
+                      class="button subtle"
+                      type="button"
+                      [disabled]="checkoutBusy() || !buyable()"
+                      (click)="openCheckout()"
+                    >
+                      Buy now
+                    </button>
+                  </div>
+                </fieldset>
+              </form>
+              <mh-feedback [error]="action.error()" [message]="action.message()" />
+            } @else if (!auth.authenticated()) {
+              <p class="u-text-muted">
+                Sign in as a customer to add this product to your cart or buy it.
+              </p>
+              <a
+                class="button primary"
+                routerLink="/login"
+                [queryParams]="{ returnTo: '/products/' + product.id }"
+                >Sign in to shop</a
+              >
+            } @else {
+              <p class="u-text-muted">Purchases are available to customer accounts.</p>
+            }
+          </section>
+          @if (checkoutQuantity(); as amount) {
+            <mh-checkout
+              [items]="[{ productId: product.id, quantity: amount }]"
+              [total]="product.priceCents * amount"
+              (busyChange)="checkoutBusy.set($event)"
+            />
+          }
+        </aside>
+      </article>
     }`,
   styleUrl: './product-details.page.css',
 })

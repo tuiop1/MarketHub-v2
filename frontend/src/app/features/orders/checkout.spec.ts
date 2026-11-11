@@ -50,6 +50,10 @@ describe('Checkout workflow', () => {
     fixture.detectChanges();
     fixture.componentInstance.onPlaced({ ...order, status: 'PAYMENT_FAILED' });
     expect(fixture.componentInstance.state().value).toEqual(cart);
+    expect(fixture.nativeElement.textContent).toContain(product.name);
+    expect(
+      fixture.nativeElement.querySelector('mh-product-art, img, picture, [role="img"]')
+    ).toBeNull();
     http.expectNone('/api/v1/carts');
     http.expectNone('/api/v1/carts/items');
   });

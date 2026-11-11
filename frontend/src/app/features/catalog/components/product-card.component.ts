@@ -12,29 +12,15 @@ import { Product } from '../data-access/catalog.models';
 import { CartApi } from '../../cart/data-access/cart-api.service';
 import { PurchaseItem } from '../../orders/data-access/orders-api.service';
 import { ActionState } from '../../../shared/state/request-state';
-import { ProductArtComponent } from '../../../shared/ui/product-art.component';
 import { MoneyPipe } from '../../../shared/ui/money.pipe';
 import { FeedbackComponent } from '../../../shared/ui/feedback.component';
 import { FieldErrorComponent } from '../../../shared/ui/field-error.component';
 import { integer } from '../../../shared/utilities/validators';
 @Component({
   selector: 'mh-product-card',
-  imports: [
-    RouterLink,
-    ReactiveFormsModule,
-    ProductArtComponent,
-    MoneyPipe,
-    FeedbackComponent,
-    FieldErrorComponent,
-  ],
+  imports: [RouterLink, ReactiveFormsModule, MoneyPipe, FeedbackComponent, FieldErrorComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: ` <article class="product-card" [class.selected]="selected()">
-    <a
-      [routerLink]="['/products', product().id]"
-      class="art-link"
-      [attr.aria-label]="'View ' + product().name"
-      ><mh-product-art [seed]="product().id"
-    /></a>
     <div class="card-copy">
       <div class="stock-line">
         <span>{{ product().stockQuantity > 0 ? 'Available' : 'Out of stock' }}</span><span
@@ -44,9 +30,9 @@ import { integer } from '../../../shared/utilities/validators';
       <h3>
         <a [routerLink]="['/products', product().id]">{{ product().name }}</a>
       </h3>
-      <p class="description">
-        {{ product().description || 'Discover this product in the marketplace.' }}
-      </p>
+      @if (product().description) {
+        <p class="description">{{ product().description }}</p>
+      }
       <div class="price-line">
         <strong class="u-money">{{ product().priceCents | money }}</strong><a
           [routerLink]="['/products', product().id]"

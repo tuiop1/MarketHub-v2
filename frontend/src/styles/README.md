@@ -48,13 +48,13 @@ No IDs, inline styles or `!important` are used to win ordinary styling conflicts
 
 ## Tokens and units
 
-Use semantic colors: `--color-text`, `--color-text-muted`, `--color-action`, `--color-page`, `--color-surface`, and state-specific surface/text pairs. Raw CSS color literals are centralized in `tokens.css`. The existing palette, including placeholder tones, is retained; this refactor is not a redesign.
+Use semantic colors: `--color-text`, `--color-text-muted`, `--color-action`, `--color-page`, `--color-surface`, and state-specific surface/text pairs. Raw CSS color literals are centralized in `tokens.css`. The shared palette is retained. Product views use text-only blocks; obsolete product-art color tokens have been removed.
 
 Typography has one font-family source, size tokens, font-weight tokens, line heights and tracking. Size names such as `--font-size-14` identify the original reference size at a browser default of 16px; their values are **rem**, not fixed px. The existing size range is recorded explicitly to avoid changing the visual hierarchy during an architectural refactor. A future typography redesign should update that scale intentionally rather than add arbitrary per-page sizes.
 
 The root uses `font-size: 100%`, preserving the browser's font preference. Body text defaults to `var(--font-size-14)`. Text, spacing, radii and content constraints use rem. `em` remains useful for icons sized relative to their surrounding text; percentages, fractions, viewport units and `ch` retain their layout meaning. Thin borders/focus strokes stay in px.
 
-The spacing scale uses a 4px reference unit: `--space-1` is 0.25rem, `--space-4` is 1rem, and fractional steps retain the original fine spacing. Repeated spacing should use these tokens. A unique product-art ratio, grid column proportion or component-specific width stays in its owning stylesheet; not every number needs a global token.
+The spacing scale uses a 4px reference unit: `--space-1` is 0.25rem, `--space-4` is 1rem, and fractional steps retain the original fine spacing. Repeated spacing should use these tokens. A unique grid column proportion or component-specific width stays in its owning stylesheet; not every number needs a global token.
 
 Breakpoints remain literal CSS-pixel media-query conditions and live beside the affected layout. CSS custom properties cannot substitute into ordinary media-query conditions, so a `--breakpoint-mobile` token would suggest functionality it does not provide. No preprocessor is introduced solely to share those values. Shared compositions own shared breakpoints; a page owns its specific collapse threshold.
 

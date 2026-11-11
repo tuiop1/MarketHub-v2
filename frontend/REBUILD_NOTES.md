@@ -31,7 +31,7 @@ The root now contains only shell/navigation behavior; feature pages and focused 
 
 Public products/categories/shops have paginated directory and detail routes. Customer features include registration, account details, cart additions/removal/clear, direct single/batch purchase, cart checkout and expandable order snapshots. Approved merchants can create, edit, activate and deactivate their own products. Administrators can manage categories, approve/reject/suspend shops and enable/disable customer accounts. Sensitive management operations require confirmation.
 
-The visual design uses plum, stone and an ochre brand accent after the user rejected blue/white. Product placeholders are explicitly image-free; no image contract was invented. Plus Jakarta Sans is bundled locally. On narrow mobile screens the secondary shop promotion is hidden so product browsing starts sooner; its actions remain in navigation/footer.
+The visual design uses plum, stone and an ochre brand accent after the user rejected blue/white. Products use text-only blocks with no image placeholders or reserved media space; no image contract was invented. Plus Jakarta Sans is bundled locally. On narrow mobile screens the secondary shop promotion is hidden so product browsing starts sooner; its actions remain in navigation/footer.
 
 ## Verification on 2026-11-11
 
@@ -95,3 +95,9 @@ The CSS was subsequently reorganized without changing API clients, authenticatio
 Typography, colors, spacing, radii, control dimensions, common widths, motion and elevation use shared custom properties. Rem values preserve the original default reference dimensions while allowing browser font preferences to scale them. Utility classes have the explicit `u-` prefix. No dependency or backend/infrastructure change was needed. The extension rules are documented in `src/styles/README.md`; Angular still uses its existing `src/styles.css` entry.
 
 Verification for this follow-up: production build passed; all 81 tests across 10 files passed; formatting and Git whitespace checks passed. Browser comparison at CSS width 1280 found no differences across 132 sampled computed-style values for registration, typography, controls, shell and layout. Mobile checks at CSS width 390 confirmed a single-column form, visible inline validation, working sort-control layout and no horizontal overflow. `qa/css-refactor-mobile.jpg` records the post-refactor registration screen using no fixture data. These checks cover the refactor; they do not turn the earlier unverified backend workflows into verified ones.
+
+## Text-only product presentation
+
+Product cards, product details and cart rows now use text-only blocks, following the user's explicit requirement that a backend without product images should have no image placeholders in the frontend. The shared product-art component and its CSS/color tokens were removed. Catalog cards lead with name, description, stock and price; product details use information and purchase blocks; cart rows no longer reserve a thumbnail column. The no-image presentation is intentional, not an unavailable-image state.
+
+Verification: production build passes and all 82 tests across 10 files pass. Regression coverage asserts the absence of product media in catalog/details/cart, and a routed product-details test places a direct simulated order through the redesigned purchase area using HttpTestingController. Browser checks at CSS widths 1280 and 390 verified catalog/detail text layouts without horizontal overflow or product-media elements. Browser checks used the isolated read-only HTTP fixtures, not the live backend. Backend/infrastructure files were compared against the start of this follow-up and remain unchanged.
