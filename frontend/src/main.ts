@@ -1,8 +1,7 @@
 import { bootstrapApplication } from '@angular/platform-browser';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { AppComponent } from './app/app.component';
-import { authInterceptor } from './app/auth.interceptor';
-
-bootstrapApplication(AppComponent, {
-  providers: [provideHttpClient(withInterceptors([authInterceptor]))]
-}).catch(console.error);
+import { appConfig } from './app/app.config';
+bootstrapApplication(AppComponent, appConfig).catch(() => {
+  const root = document.querySelector('app-root');
+  if (root) root.textContent = 'MarketHub could not start. Reload the page to try again.';
+});

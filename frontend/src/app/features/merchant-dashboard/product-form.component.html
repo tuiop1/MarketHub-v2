@@ -1,0 +1,86 @@
+<form class="form-panel" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <h2>{{ product() ? 'Edit product' : 'Add a product' }}</h2>
+  <fieldset [disabled]="action.busy()">
+    <div class="form-grid">
+      <div class="u-span-full">
+        <label for="product-name"
+          >Product name<input
+            id="product-name"
+            type="text"
+            formControlName="name"
+            maxlength="255"
+            aria-describedby="product-name-error"
+            [attr.aria-invalid]="
+              form.controls.name.touched && form.controls.name.invalid
+            " /><mh-field-error
+            [control]="form.controls.name"
+            errorId="product-name-error"
+            [serverError]="action.error()?.fields?.['name'] || ''"
+        /></label>
+      </div>
+      <label class="u-span-full" for="product-description"
+        >Description<textarea
+          id="product-description"
+          formControlName="description"
+          maxlength="5000"
+          aria-describedby="product-description-error"
+        ></textarea
+        ><mh-field-error
+          [control]="form.controls.description"
+          errorId="product-description-error"
+          [serverError]="action.error()?.fields?.['description'] || ''" /></label
+      ><label for="product-priceCents"
+        >Price in USD cents<input
+          id="product-priceCents"
+          type="number"
+          formControlName="priceCents"
+          min="1"
+          step="1"
+          aria-describedby="product-priceCents-error"
+          [attr.aria-invalid]="
+            form.controls.priceCents.touched && form.controls.priceCents.invalid
+          " /><mh-field-error
+          [control]="form.controls.priceCents"
+          errorId="product-priceCents-error"
+          [serverError]="action.error()?.fields?.['priceCents'] || ''" /></label
+      ><label for="product-stockQuantity"
+        >Units in stock<input
+          id="product-stockQuantity"
+          type="number"
+          formControlName="stockQuantity"
+          min="0"
+          step="1"
+          max="2147483647"
+          aria-describedby="product-stockQuantity-error"
+          [attr.aria-invalid]="
+            form.controls.stockQuantity.touched && form.controls.stockQuantity.invalid
+          " /><mh-field-error
+          [control]="form.controls.stockQuantity"
+          errorId="product-stockQuantity-error"
+          [serverError]="action.error()?.fields?.['stockQuantity'] || ''"
+      /></label>
+      <p class="u-text-muted u-text-small u-span-full">100 cents = $1.00. Enter whole cents.</p>
+      <mh-category-picker
+        class="u-span-full"
+        [control]="form.controls.categoryId"
+        [serverError]="action.error()?.fields?.['categoryId'] || ''"
+      />
+      @if (product()) {
+        <label class="checkbox-label u-span-full"
+          ><input type="checkbox" formControlName="active" />Active listing</label
+        >
+      }
+      <div class="actions u-span-full">
+        <button class="button primary" type="submit">
+          {{ action.busy() ? 'Saving…' : product() ? 'Save product' : 'Create product' }}
+        </button>
+        @if (product()) {
+          <button class="button subtle" type="button" (click)="cancelled.emit()">
+            Cancel edit
+          </button>
+        }
+      </div>
+    </div>
+  </fieldset>
+  <mh-feedback [error]="action.error()" />
+</form>
