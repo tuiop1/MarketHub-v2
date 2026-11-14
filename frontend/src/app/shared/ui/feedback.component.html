@@ -1,0 +1,12 @@
+@if (error(); as failure) {
+  <div class="notice error" role="alert">
+    <strong>Could not complete the request</strong>
+    <p>{{ failure.message }}</p>
+    @if (retryable()) {
+      <button class="button subtle" (click)="retry.emit()">Try again</button>
+    }
+  </div>
+}
+@if (message()) {
+  <p class="notice success" role="status">{{ message() }}</p>
+}

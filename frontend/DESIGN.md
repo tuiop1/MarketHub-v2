@@ -16,4 +16,6 @@ Accessibility: 44px controls, visible focus, skip link, reduced-motion support, 
 
 ## Styling ownership
 
-Design values live in `src/styles/tokens.css`. `src/styles/main.css` composes reset, base, layout, shared UI patterns, utilities and accessibility overrides through explicit cascade layers. Individual page/component styles are colocated and Angular-scoped. See [CSS architecture](src/styles/README.md). The palette and reference sizes are preserved by the CSS architecture refactor.
+Design values live in `src/styles/_tokens.scss`. `src/styles/main.scss` composes reset, base, layout, shared UI patterns, utilities and accessibility overrides through explicit cascade layers. Individual page/component styles are colocated and Angular-scoped. See [SCSS architecture](src/styles/README.md). The palette and reference sizes are preserved by the CSS architecture refactor.
+
+All templates are separate HTML files; styles use SCSS modules and shared responsive mixins. The migration retains the established cascade layers, token values, selectors and breakpoint thresholds.

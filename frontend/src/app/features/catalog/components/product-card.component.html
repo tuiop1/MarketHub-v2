@@ -1,0 +1,55 @@
+<article class="product-card" [class.selected]="selected()">
+  <div class="card-copy">
+    <div class="stock-line">
+      <span>{{ product().stockQuantity > 0 ? 'Available' : 'Out of stock' }}</span><span
+        >{{ product().stockQuantity }} in stock</span
+      >
+    </div>
+    <h3>
+      <a [routerLink]="['/products', product().id]">{{ product().name }}</a>
+    </h3>
+    @if (product().description) {
+      <p class="description">{{ product().description }}</p>
+    }
+    <div class="price-line">
+      <strong class="u-money">{{ product().priceCents | money }}</strong><a
+        [routerLink]="['/products', product().id]"
+        >Details</a
+      >
+    </div>
+    @if (customer()) {
+      <form [formGroup]="form" (ngSubmit)="add()" class="cart-controls">
+        <label [for]="'qty-' + product().id">Quantity</label>
+        <div class="actions">
+          <input
+            type="number"
+            [id]="'qty-' + product().id"
+            [formControl]="quantity"
+            min="1"
+            [max]="product().stockQuantity"
+            step="1"
+            [attr.aria-describedby]="'qty-error-' + product().id"
+            (input)="updateSelection()"
+          />
+          <button
+            class="button subtle"
+            type="submit"
+            [disabled]="action.busy() || locked() || product().stockQuantity === 0"
+          >
+            {{ action.busy() ? 'Adding…' : 'Add to cart' }}
+          </button>
+        </div>
+        <mh-field-error [control]="quantity" [errorId]="'qty-error-' + product().id" />
+      </form>
+      <label class="checkbox-label selection"
+        ><input
+          type="checkbox"
+          [checked]="selected()"
+          [disabled]="locked() || product().stockQuantity === 0"
+          (change)="toggle($event)"
+        />Select for direct checkout</label
+      >
+    }
+    <mh-feedback [error]="action.error()" [message]="action.message()" />
+  </div>
+</article>

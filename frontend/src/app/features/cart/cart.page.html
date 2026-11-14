@@ -1,0 +1,74 @@
+<div class="page-heading">
+  <div>
+    <h1>Your cart.</h1>
+    <p>A few good finds, ready when you are.</p>
+  </div>
+  <a class="button subtle" routerLink="/products">Continue browsing</a>
+</div>
+<mh-feedback [error]="action.error()" [message]="action.message()" />
+@if (state().status === 'loading') {
+  <mh-loading label="Loading your cart…" />
+}
+<mh-feedback [error]="state().error" [retryable]="true" (retry)="reload.next()" />
+@if (state().status === 'error') {
+  <p class="u-text-muted">
+    An unavailable product can prevent your cart from loading. If refreshing does not help, you can
+    clear the cart and start again.
+  </p>
+  <button class="button danger" [disabled]="action.busy()" (click)="confirmClear.set(true)">
+    Clear unavailable cart
+  </button>
+}
+<div class="split-layout">
+  <section>
+    @if (state().status === 'success' && !state().value?.cartItems?.length) {
+      <mh-empty
+        title="Room for something good."
+        description="Your cart is empty. Explore the marketplace and add a product to get started."
+        ><a class="button primary" routerLink="/products">Browse products</a></mh-empty
+      >
+    }
+    @if (state().value; as cart) {
+      @for (item of cart.cartItems; track item.id) {
+        <mh-cart-item
+          [item]="item"
+          [busy]="action.busy() || checkoutBusy()"
+          (increase)="increase(item)"
+          (remove)="remove(item.id)"
+        />
+      }
+      @if (cart.cartItems.length) {
+        <button
+          class="button link"
+          [disabled]="action.busy() || checkoutBusy()"
+          (click)="confirmClear.set(true)"
+        >
+          Clear cart
+        </button>
+        <p class="u-text-muted u-text-small">
+          To reduce a quantity, remove the item and add the amount you need from its product page.
+        </p>
+      }
+    }
+  </section>
+  <aside>
+    @if (hasItems() || lastOrder()) {
+      <mh-checkout
+        [cart]="true"
+        [total]="state().value?.totalPriceCents || lastOrder()?.totalPriceCents || 0"
+        [disabled]="!canCheckout() || action.busy()"
+        (busyChange)="checkoutBusy.set($event)"
+        (placed)="onPlaced($event)"
+      />
+    }
+  </aside>
+</div>
+@if (confirmClear()) {
+  <mh-confirmation
+    title="Clear your cart?"
+    message="Every item will be removed from your cart. You can add products again from the marketplace."
+    confirmLabel="Clear cart"
+    (cancelled)="confirmClear.set(false)"
+    (confirmed)="clear()"
+  />
+}

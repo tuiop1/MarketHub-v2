@@ -9,3 +9,13 @@ The normal frontend at :3000 continues to use the actual gateway :8080 and Keycl
 `css-refactor-mobile.jpg` records the actual registration page after the CSS architecture refactor. It uses no fixture records. The refactor preserved all 132 sampled desktop computed-style values; mobile form/validation and catalog controls were checked at CSS width 390 without horizontal overflow.
 
 The catalog capture was refreshed for the text-only product layout. `product-details-text-only-fixtures.jpg` shows the corresponding desktop details and purchase blocks, using the same isolated fixture API. Neither screenshot contains product-image placeholders. These captures verify presentation; they do not claim live backend integration.
+
+## Template and SCSS migration — 2026-11-14
+
+`scss-migration-catalog-fixtures.jpg` shows the production catalog after template extraction and the Sass migration. `scss-migration-browser-report.json` records 24 before/after comparisons against a production build of the original source. Both builds used identical GET-only fixtures on temporary local servers; no fixture mode was added to the application.
+
+The catalog was compared at widths 390, 800, 1280 and 1440. Product, category and shop details, directories, customer/merchant registration, login and the missing-page state were compared at 390 and 1280. Empty registration submission and changing the sort control were also compared. Each check compared rendered text, DOM element structure/classes/links, bounding boxes and 26 computed-style properties. All matched, with no horizontal overflow. The final catalog console had no errors.
+
+A browser check caught a real Sass font-import hoisting issue: establishing the `base` layer ahead of the order declaration gave reset rules higher priority. Loading the font with `meta.load-css` after the explicit layer order fixed it. The final compiled global rule/declaration stream matches the original, with unchanged layer order.
+
+These checks cover presentation and client validation. Gateway and Keycloak were stopped, so live authentication, authorized administration and checkout integration were not exercised.

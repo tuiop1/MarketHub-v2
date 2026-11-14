@@ -1,0 +1,31 @@
+@use 'sass:map';
+
+$breakpoints: (
+  phone: 480px,
+  compact: 600px,
+  tablet: 700px,
+  navigation: 800px,
+  admin: 950px,
+  split: 1000px,
+  workspace: 1050px,
+  wide: 1300px,
+);
+
+@function breakpoint($name) {
+  @if not map.has-key($breakpoints, $name) {
+    @error 'Unknown breakpoint: #{$name}';
+  }
+  @return map.get($breakpoints, $name);
+}
+
+@mixin down($name) {
+  @media (max-width: breakpoint($name)) {
+    @content;
+  }
+}
+
+@mixin up($name) {
+  @media (min-width: breakpoint($name)) {
+    @content;
+  }
+}

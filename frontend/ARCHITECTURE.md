@@ -8,10 +8,10 @@ Angular 20 standalone application. The rebuild replaces manual view switching an
 src/
   main.ts                         application bootstrap and startup fallback
   environments/                  local and production identity-provider configuration
-  styles.css                     imports the CSS composition root
+  styles.scss                    imports the SCSS composition root
   styles/                        tokens, reset, base, layout, shared patterns, utilities
   app/
-    app.component.{ts,html,css}   shell, navigation, footer, session-end navigation
+    app.component.{ts,html,scss}   shell, navigation, footer, session-end navigation
     app.config.ts                Router, HTTP interceptors, auth initialization
     app.routes.ts                lazy routes, page titles, role guards and 404
     core/
@@ -36,7 +36,7 @@ src/
     testing/                     test-only fixtures and cross-feature API contract tests
 ```
 
-Tests are colocated with the behavior they cover. Small page templates remain next to their class; complex forms and the application shell have separate HTML. Long inline templates are formatted as ordinary readable HTML. Global styles are composed through `styles/main.css` and native cascade layers. Tokens, reset, base rules, layout, shared UI patterns and utilities have explicit owners. Unique component/page CSS lives in colocated `.css` files referenced by `styleUrl`; no decorator CSS or inline style attributes remain. See [CSS architecture](src/styles/README.md) for the cascade contract and extension rules. `DESIGN.md` records the palette and visual decisions.
+Tests are colocated with the behavior they cover. Every Angular component uses `templateUrl` to reference a separate HTML file, including small shared components and routing-test fixtures. Component/page styles are colocated `.scss` files referenced by `styleUrl`. `styles/main.scss` composes the global Sass partials inside explicit native cascade layers; runtime design tokens remain CSS custom properties. The CSS-free `styles/tools/_media.scss` module shares existing breakpoint values and mixins. No inline templates, decorator styles or style attributes remain. See [SCSS architecture](src/styles/README.md) for ownership, module use and cascade rules. `DESIGN.md` records the visual decisions.
 
 ## Responsibility boundaries
 

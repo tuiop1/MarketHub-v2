@@ -29,7 +29,7 @@ Tokens stay in memory. After a full page reload, sign in again to reuse the Keyc
 - [API integration](API_INTEGRATION.md): verified endpoint matrix, DTOs, roles and limitations.
 - [Learning guide](LEARNING_GUIDE.md): examples for a Java/Spring developer learning Angular.
 - [Rebuild notes](REBUILD_NOTES.md): audit, changes, tests and acceptance status.
-- [CSS architecture](src/styles/README.md): stylesheet ownership, tokens, units and cascade rules.
+- [SCSS architecture](src/styles/README.md): external templates, Sass modules, tokens, responsive mixins and cascade rules.
 - [Design decisions](DESIGN.md): tokens, typography, accessibility and layout.
 
 Implementation was AI-assisted. Review and live integration testing remain necessary before production release or claims of independently authored implementation.

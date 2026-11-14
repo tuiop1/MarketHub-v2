@@ -17,18 +17,8 @@ const paths = {
 @Component({
   selector: 'mh-icon',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="1.6"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    aria-hidden="true"
-  >
-    <path [attr.d]="path()" />
-  </svg>`,
-  styleUrl: './icon.component.css',
+  templateUrl: './icon.component.html',
+  styleUrl: './icon.component.scss',
 })
 export class IconComponent {
   readonly name = input<keyof typeof paths>('box');

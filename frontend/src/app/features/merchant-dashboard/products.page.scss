@@ -1,0 +1,13 @@
+@use '../../../styles/tools/media' as media;
+
+.management-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(20.625rem, 1fr);
+  gap: var(--space-7);
+  align-items: start;
+}
+@include media.down('workspace') {
+  .management-layout {
+    grid-template-columns: 1fr;
+  }
+}

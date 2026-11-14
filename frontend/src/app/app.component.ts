@@ -8,7 +8,7 @@ import { IconComponent } from './shared/ui/icon.component';
   imports: [RouterOutlet, RouterLink, RouterLinkActive, IconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './app.component.html',
-  styleUrl: './app.component.css',
+  styleUrl: './app.component.scss',
 })
 export class AppComponent {
   readonly auth = inject(AuthService);

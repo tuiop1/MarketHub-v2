@@ -1,0 +1,111 @@
+<div class="page-heading">
+  <div>
+    <h1>Your products.</h1>
+    <p>Manage your shop’s listings, prices, and availability.</p>
+  </div>
+</div>
+@if (profile()?.status === 'loading') {
+  <mh-loading label="Checking shop status…" />
+}
+<mh-feedback [error]="profile()?.error || null" />
+@if (profile()?.value?.status === 'VERIFIED') {
+  <mh-feedback [error]="action.error()" [message]="action.message()" />
+  <div class="management-layout">
+    <section>
+      <h2>Your listings</h2>
+      @if (resource.state().status === 'loading') {
+        <mh-loading label="Loading your listings…" />
+      }
+      <mh-feedback
+        [error]="resource.state().error"
+        [retryable]="true"
+        (retry)="resource.reload()"
+      />
+      @if (resource.state().value; as page) {
+        @if (page.content.length) {
+          <div class="table-wrap">
+            <table>
+              <caption class="u-visually-hidden">
+                Your product listings
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Product</th>
+                  <th scope="col">Price / stock</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (product of page.content; track product.id) {
+                  <tr>
+                    <td>
+                      <span class="cell-title">{{ product.name }}</span><span
+                        class="badge"
+                        [class.good]="product.active"
+                        >{{ product.active ? 'Active' : 'Inactive' }}</span
+                      >
+                    </td>
+                    <td>
+                      <span class="u-money">{{ product.priceCents | money }}</span>
+                      <p class="u-text-muted">{{ product.stockQuantity }} in stock</p>
+                    </td>
+                    <td>
+                      <div class="table-actions">
+                        <button
+                          class="button subtle"
+                          [disabled]="action.busy() || formBusy()"
+                          (click)="editing.set(product)"
+                        >
+                          Edit
+                        </button>
+                        @if (product.active) {
+                          <button
+                            class="button danger"
+                            [disabled]="action.busy() || formBusy()"
+                            (click)="deactivating.set(product)"
+                          >
+                            Deactivate
+                          </button>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <mh-empty
+            title="Start with your first product."
+            description="Add a product using the form. It will appear in the marketplace when active."
+          />
+        }
+        <mh-pagination [page]="page.number" [totalPages]="page.totalPages" />
+      }
+    </section>
+    <aside id="product-editor">
+      <mh-product-form
+        [product]="editing()"
+        (busyChange)="formBusy.set($event)"
+        (saved)="saved()"
+        (cancelled)="editing.set(null)"
+      />
+    </aside>
+  </div>
+} @else if (profile()?.value) {
+  <p class="notice warning">
+    Your shop is not currently approved to manage products. Check your account for its status.
+  </p>
+}
+@if (deactivating(); as product) {
+  <mh-confirmation
+    title="Deactivate this product?"
+    [message]="
+      product.name +
+      ' will be hidden from the marketplace. You can activate it again by editing the listing.'
+    "
+    confirmLabel="Deactivate product"
+    (cancelled)="deactivating.set(null)"
+    (confirmed)="deactivate(product)"
+  />
+}

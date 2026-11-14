@@ -1,0 +1,100 @@
+<div class="page-heading">
+  <div>
+    <h1>Your account.</h1>
+    <p>Welcome, {{ auth.displayName() }}.</p>
+  </div>
+  <button class="button subtle" (click)="reload.next()">Refresh profile</button>
+</div>
+<div class="split-layout">
+  <section class="panel">
+    <h2>Profile</h2>
+    @if (customer().status === 'loading' || merchant().status === 'loading') {
+      <mh-loading label="Loading your profile…" />
+    }
+    <mh-feedback
+      [error]="customer().error"
+      [retryable]="true"
+      (retry)="reload.next()"
+    /><mh-feedback [error]="merchant().error" [retryable]="true" (retry)="reload.next()" />
+    @if (customer().value; as profile) {
+      <dl class="details-list">
+        <dt>Name</dt>
+        <dd>{{ profile.firstName }} {{ profile.lastName }}</dd>
+        <dt>Email</dt>
+        <dd>{{ profile.email }}</dd>
+        <dt>Date of birth</dt>
+        <dd>{{ (profile.birthDate | date: 'longDate') || 'Not provided' }}</dd>
+        <dt>Account status</dt>
+        <dd>{{ profile.enabled ? 'Enabled' : 'Disabled' }}</dd>
+        <dt>Joined</dt>
+        <dd>{{ profile.createdAt | date: 'longDate' }}</dd>
+      </dl>
+      @if (profile.address; as address) {
+        <h3>Address</h3>
+        <p>
+          {{ address.street }} {{ address.apartment }}<br />{{ address.postalCode }}
+          {{ address.city }}<br />{{ address.country }}
+        </p>
+      }
+    }
+    @if (merchant().value; as shop) {
+      <h3>{{ shop.shopName }}</h3>
+      <span
+        class="badge"
+        [class.good]="shop.status === 'VERIFIED'"
+        [class.warning]="shop.status === 'PENDING'"
+        [class.bad]="shop.status === 'REJECTED' || shop.status === 'SUSPENDED'"
+        >{{ shop.status.toLowerCase() }}</span
+      >
+      <p class="detail-copy shop-description">{{ shop.description }}</p>
+      <dl class="details-list">
+        <dt>Shop email</dt>
+        <dd>{{ shop.email }}</dd>
+        <dt>Joined</dt>
+        <dd>{{ shop.createdAt | date: 'longDate' }}</dd>
+      </dl>
+      @if (shop.status === 'PENDING') {
+        <p class="notice">
+          Your shop is waiting for an administrator’s review. You can manage products after
+          approval.
+        </p>
+      }
+      @if (shop.status === 'REJECTED') {
+        <p class="notice warning">
+          Your application was rejected. Product management is unavailable.
+        </p>
+      }
+      @if (shop.status === 'SUSPENDED') {
+        <p class="notice error">Your shop is suspended. Product management is unavailable.</p>
+      }
+      @if (shop.status === 'VERIFIED' && !auth.hasRole('MERCHANT')) {
+        <p class="notice">Your shop is approved. Sign in again to refresh your access.</p>
+        <button class="button primary" (click)="auth.login('/account')">Refresh sign-in</button>
+      }
+    }
+    @if (!auth.hasRole('CUSTOMER') && !auth.isMerchant()) {
+      <p class="u-text-muted">
+        This account uses an administrative identity. Use the administration area to manage the
+        marketplace.
+      </p>
+    }
+  </section>
+  <aside class="panel">
+    <h2>Your workspace</h2>
+    <div class="workspace-links">
+      @if (auth.hasRole('CUSTOMER')) {
+        <a routerLink="/cart">Your cart</a><a routerLink="/orders">Order history</a>
+      }
+      @if (auth.hasRole('MERCHANT')) {
+        <a routerLink="/merchant/products">Manage your products</a>
+      }
+      @if (auth.hasRole('ADMIN')) {
+        <a routerLink="/admin">Marketplace administration</a>
+      }
+      <a routerLink="/products">Explore the marketplace</a>
+    </div>
+    <p class="u-text-muted u-text-small profile-edit-note">
+      Profile editing is not currently available.
+    </p>
+  </aside>
+</div>

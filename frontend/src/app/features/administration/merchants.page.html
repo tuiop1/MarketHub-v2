@@ -1,0 +1,111 @@
+<div class="page-heading">
+  <div>
+    <h1>Shop applications.</h1>
+    <p>Review new shops and manage approved sellers.</p>
+  </div>
+</div>
+<mh-admin-nav />
+<nav class="tab-nav" aria-label="Shop status">
+  <a
+    [routerLink]="[]"
+    [queryParams]="{ view: 'pending', page: 0 }"
+    [class.active]="!verified()"
+    [attr.aria-current]="!verified() ? 'page' : null"
+    >Pending applications</a
+  ><a
+    [routerLink]="[]"
+    [queryParams]="{ view: 'verified', page: 0 }"
+    [class.active]="verified()"
+    [attr.aria-current]="verified() ? 'page' : null"
+    >Approved shops</a
+  >
+</nav>
+<mh-feedback [error]="action.error()" [message]="action.message()" />
+@if (resource.state().status === 'loading') {
+  <mh-loading label="Loading shops…" />
+}
+<mh-feedback [error]="resource.state().error" [retryable]="true" (retry)="resource.reload()" />
+@if (resource.state().value; as page) {
+  @if (page.content.length) {
+    <div class="table-wrap">
+      <table>
+        <caption class="u-visually-hidden">
+          {{
+            verified() ? 'Approved shops' : 'Pending shop applications'
+          }}
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Shop</th>
+            <th scope="col">Application</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (shop of page.content; track shop.id) {
+            <tr>
+              <td>
+                <a class="cell-title" [routerLink]="['/merchants', shop.id]">{{ shop.shopName }}</a>
+                <p>{{ shop.email }}</p>
+                <p class="u-text-muted">{{ shop.description }}</p>
+              </td>
+              <td>
+                <span class="badge" [class.good]="shop.status === 'VERIFIED'">{{
+                  shop.status.toLowerCase()
+                }}</span>
+                <p class="u-text-small u-text-muted">{{ shop.createdAt | date: 'mediumDate' }}</p>
+              </td>
+              <td>
+                <div class="table-actions">
+                  @if (shop.status === 'PENDING') {
+                    <button
+                      class="button primary"
+                      [disabled]="action.busy()"
+                      (click)="confirm(shop, 'verify')"
+                    >
+                      Approve</button
+                    ><button
+                      class="button danger"
+                      [disabled]="action.busy()"
+                      (click)="confirm(shop, 'reject')"
+                    >
+                      Reject
+                    </button>
+                  }
+                  @if (shop.status === 'VERIFIED') {
+                    <button
+                      class="button danger"
+                      [disabled]="action.busy()"
+                      (click)="confirm(shop, 'disable')"
+                    >
+                      Suspend
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <mh-empty
+      [title]="verified() ? 'No approved shops yet.' : 'No applications waiting.'"
+      [description]="
+        verified()
+          ? 'Approved shops will appear here.'
+          : 'You’re up to date. New applications will appear here.'
+      "
+    />
+  }
+  <mh-pagination [page]="page.number" [totalPages]="page.totalPages" />
+}
+@if (confirmation(); as target) {
+  <mh-confirmation
+    [title]="actionTitle(target.action) + ' shop?'"
+    [message]="confirmationMessage()"
+    [confirmLabel]="actionTitle(target.action) + ' shop'"
+    (cancelled)="confirmation.set(null)"
+    (confirmed)="perform()"
+  />
+}

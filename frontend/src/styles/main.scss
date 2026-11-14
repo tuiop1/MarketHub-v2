@@ -1,0 +1,36 @@
+@use 'sass:meta';
+
+@layer tokens, reset, base, layout, components, utilities, accessibility;
+
+// Load the font here so Sass cannot hoist a CSS import ahead of the layer order.
+@layer base {
+  @include meta.load-css('@fontsource-variable/plus-jakarta-sans/index.css');
+}
+
+@layer tokens {
+  @include meta.load-css('tokens');
+}
+@layer reset {
+  @include meta.load-css('reset');
+}
+@layer base {
+  @include meta.load-css('base');
+}
+@layer layout {
+  @include meta.load-css('layout');
+}
+@layer components {
+  @include meta.load-css('components/buttons');
+  @include meta.load-css('components/forms');
+  @include meta.load-css('components/notices');
+  @include meta.load-css('components/badges');
+  @include meta.load-css('components/navigation');
+  @include meta.load-css('components/tables');
+  @include meta.load-css('components/directory');
+}
+@layer utilities {
+  @include meta.load-css('utilities');
+}
+@layer accessibility {
+  @include meta.load-css('accessibility');
+}

@@ -1,0 +1,13 @@
+@use '../../../styles/tools/media' as media;
+
+.admin-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(20rem, 1fr);
+  gap: var(--space-7);
+  align-items: start;
+}
+@include media.down('admin') {
+  .admin-split {
+    grid-template-columns: 1fr;
+  }
+}
