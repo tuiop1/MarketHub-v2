@@ -1,0 +1,117 @@
+.diagnostics {
+  position: fixed;
+  z-index: 40;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  max-width: calc(100vw - var(--space-8));
+  font-size: var(--font-size-12);
+}
+
+.diagnostics-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-12);
+  cursor: pointer;
+
+  input {
+    margin: 0;
+  }
+}
+
+.diagnostics-panel {
+  width: 27rem;
+  max-width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+
+  header,
+  .diagnostics-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: 0 var(--space-4);
+  }
+
+  h2 {
+    margin: 0;
+    font-size: var(--font-size-15);
+  }
+
+  p {
+    margin: 0;
+  }
+
+  .button {
+    font-size: inherit;
+  }
+}
+
+.diagnostics-body {
+  max-height: min(28rem, 55dvh);
+  overflow: auto;
+  border-top: 1px solid var(--color-border);
+}
+
+.diagnostics-toolbar,
+.diagnostics-note {
+  color: var(--color-text-muted);
+}
+
+.diagnostics-panel .diagnostics-note {
+  margin: 0 var(--space-4) var(--space-3);
+}
+
+.request-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px solid var(--color-border);
+  }
+}
+
+.request-summary {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-variant-numeric: tabular-nums;
+
+  > :last-child {
+    margin-left: auto;
+  }
+}
+
+.request-path,
+.request-id {
+  overflow-wrap: anywhere;
+}
+
+.request-status {
+  color: var(--color-action);
+
+  &.failed {
+    color: var(--color-danger-text);
+  }
+}
+
+.request-cache,
+.request-id,
+.empty-requests {
+  color: var(--color-text-muted);
+}

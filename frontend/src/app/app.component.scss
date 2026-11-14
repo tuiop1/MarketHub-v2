@@ -24,16 +24,6 @@
   color: var(--color-text);
   white-space: nowrap;
 }
-.brand-symbol {
-  display: grid;
-  place-content: center;
-  width: 2.125rem;
-  height: 2.375rem;
-  background: var(--color-action);
-  color: var(--color-on-action);
-  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-xl) var(--radius-xl);
-  margin-right: var(--space-0-75);
-}
 .brand-dot {
   width: 0.4375rem;
   height: 0.4375rem;

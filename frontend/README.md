@@ -23,6 +23,25 @@ npm run format:check
 
 Tokens stay in memory. After a full page reload, sign in again to reuse the Keycloak SSO session. No client secret, demo identity or application mock-data mode is included. Payments are explicitly simulated by the existing backend.
 
+## API diagnostics
+
+In `npm start` or a `--configuration=local` build, use the **Diagnostics** switch in the bottom-right corner. It starts off. Enable it before navigating or performing an action; the panel shows the latest 25 API requests, including pending/cancelled requests, HTTP status, duration and request/correlation IDs when supplied. Collapse it, clear the list, or switch it off. Recording is memory-only; switching it off clears the list, and a full reload resets it.
+
+Only same-origin `/api/v1/` metadata is captured. Request/response bodies, request headers, query values and Keycloak requests are excluded. Cache hit/miss labels require an `X-Cache` response header; otherwise the panel says **Not reported**. HTTP 304 is labeled **Revalidated**. The current backend's internal Redis cache does not expose hits through HTTP, so diagnostics cannot report those hits. No backend change or browser cache heuristic was added.
+
+Production builds have `diagnostics: false`: the switch is absent and the interceptor is not registered. Normal user-facing errors and success messages remain with the relevant workflow.
+
+## Keycloak theme
+
+The native Keycloak sign-in screens now share the frontend's plum/stone tokens and self-hosted Plus Jakarta Sans. Keycloak still owns its forms, recovery flow and authentication behavior. See [theme maintenance](../docker/keycloak/themes/markethub/README.md).
+
+```sh
+npm run build:keycloak-theme
+npm run check:keycloak-theme
+```
+
+The SCSS source is `src/keycloak/login.scss`; the build generates the CSS/font assets loaded by the existing Keycloak theme. Rebuild these assets after changing shared tokens, then restart the normal Keycloak service (or redeploy) to clear its theme cache. The Angular application build remains independent.
+
 ## Documentation
 
 - [Architecture](ARCHITECTURE.md): ownership, lifecycle, state, auth, routes and trade-offs.

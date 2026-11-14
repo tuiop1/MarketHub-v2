@@ -3,14 +3,17 @@ import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@ang
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from './core/auth/auth.service';
 import { IconComponent } from './shared/ui/icon.component';
+import { DiagnosticsComponent } from './shared/ui/diagnostics.component';
+import { environment } from '../environments/environment';
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, IconComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, IconComponent, DiagnosticsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
 export class AppComponent {
+  readonly diagnosticsAvailable = environment.diagnostics;
   readonly auth = inject(AuthService);
   readonly menuOpen = signal(false);
   private readonly router = inject(Router);
