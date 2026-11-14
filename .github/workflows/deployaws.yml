@@ -1,0 +1,138 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push must not interrupt a deployment halfway through.
+concurrency:
+  group: aws-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/testandbuild.yml
+    with:
+      skip_image_builds: true
+      upload_frontend: true
+
+  publish-images:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        service:
+          - account-service
+          - catalog-service
+          - cart-service
+          - order-service
+          - payment-service
+          - notification-service
+          - gateway-service
+          - discovery-service
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      REGISTRY: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
+      SERVICE: ${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Get temporary AWS credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+      - name: Check immutable release tag
+        id: image
+        run: |
+          digest=$(aws ecr batch-get-image --repository-name "markethub/$SERVICE" \
+            --image-ids "imageTag=$GITHUB_SHA" --query 'images[0].imageId.imageDigest' --output text)
+          if [[ "$digest" == None ]]; then
+            echo 'exists=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'exists=true' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Log in to ECR
+        if: steps.image.outputs.exists == 'false'
+        run: aws ecr get-login-password | docker login --username AWS --password-stdin "$REGISTRY"
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        if: steps.image.outputs.exists == 'false'
+      - name: Build and push
+        if: steps.image.outputs.exists == 'false'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ./backend
+          file: backend/services/${{ matrix.service }}/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.REGISTRY }}/markethub/${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  deploy:
+    needs: [verify, publish-images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      EC2_INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+      FRONTEND_BUCKET: ${{ vars.FRONTEND_BUCKET }}
+      CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}
+      PUBLIC_APP_URL: ${{ vars.PUBLIC_APP_URL }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: frontend-${{ github.sha }}
+          path: frontend-dist
+      - name: Get temporary AWS credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+      - name: Package runtime configuration
+        run: |
+          # Explicit allowlist: no .env, private notes, credentials or database files.
+          git archive --format=tar "$GITHUB_SHA" \
+            production/aws/compose.sh production/aws/docker-compose.yml \
+            production/aws/deploy.sh production/aws/caddy production/aws/observability production/aws/rds \
+            docker/keycloak/import docker/keycloak/themes observability/grafana/provisioning \
+            | gzip -n > runtime.tar.gz
+          aws s3 cp runtime.tar.gz "s3://$FRONTEND_BUCKET/releases/$GITHUB_SHA/runtime.tar.gz" \
+            --only-show-errors
+      - name: Deploy backend through Systems Manager
+        run: python3 production/aws/deploy-via-ssm.py
+      - name: Upload frontend assets, then publish index
+        run: |
+          # Keep previous hashed assets so already-open browsers continue to work.
+          test -s frontend-dist/index.html
+          aws s3 cp frontend-dist/ "s3://$FRONTEND_BUCKET/" --recursive --exclude index.html \
+            --cache-control 'public,max-age=31536000,immutable' --only-show-errors
+          aws s3 cp frontend-dist/index.html "s3://$FRONTEND_BUCKET/index.html" \
+            --content-type 'text/html' --cache-control 'no-cache,no-store,must-revalidate' --only-show-errors
+      - name: Refresh CloudFront and check public routes
+        run: |
+          invalidation=$(aws cloudfront create-invalidation \
+            --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" --paths '/*' \
+            --query Invalidation.Id --output text)
+          aws cloudfront wait invalidation-completed \
+            --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" --id "$invalidation"
+          for path in / /cart '/api/v1/products?size=1' /auth/realms/markethub/.well-known/openid-configuration; do
+            curl --fail --silent --show-error --retry 5 --retry-all-errors --max-time 20 \
+              "$PUBLIC_APP_URL$path" > /dev/null
+          done
