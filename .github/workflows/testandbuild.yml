@@ -14,6 +14,23 @@ permissions:
   contents: read
 
 jobs:
+  frontend-check:
+    name: Test and build Angular
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - working-directory: frontend
+        run: |
+          npm ci
+          npm test
+          npm run build
+
   test:
     name: Run backend tests
     runs-on: ubuntu-latest
@@ -57,16 +74,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
 
-      - name: Validate Compose configuration
+      - name: Validate local and production Compose configurations
         run: |
-          docker compose \
-            -f docker-compose.yml \
-            -f docker-compose.prod.yml \
-            config --quiet
+          docker compose --env-file .env.prod.example -f docker-compose.yml config --quiet
+          EC2_ENV_FILE="$PWD/.env.prod.example" bash production/ec2/compose.sh --profile observability config --quiet
+          AWS_ENV_FILE="$PWD/production/aws/.env.example" bash production/aws/compose.sh --profile observability config --quiet
 
       - name: Build production images
         run: |
-          docker compose --parallel 2 \
-            -f docker-compose.yml \
-            -f docker-compose.prod.yml \
-            build
+          EC2_ENV_FILE="$PWD/.env.prod.example" \
+            bash production/ec2/compose.sh --parallel 2 build
