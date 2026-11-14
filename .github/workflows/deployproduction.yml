@@ -1,4 +1,4 @@
-name: Deploy to VPS
+name: Deploy to single EC2 / VPS (original)
 
 on:
   workflow_dispatch:
@@ -51,11 +51,11 @@ jobs:
 
             cd /opt/MarketHub-v2
 
+            git fetch origin main
+            git reset --hard origin/main
+
             compose() {
-              docker compose \
-                -f docker-compose.prod.yml \
-                --env-file .env.prod \
-                "$@"
+              bash production/ec2/compose.sh "$@"
             }
 
             # Remember whether observability is currently running.
@@ -66,9 +66,6 @@ jobs:
             else
               OBSERVABILITY_ENABLED=false
             fi
-
-            git fetch origin main
-            git reset --hard origin/main
 
             if [ "$OBSERVABILITY_ENABLED" = true ]; then
               compose --profile observability up -d --build

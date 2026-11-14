@@ -233,7 +233,9 @@ MarketHub-v2/
 ├── observability/
 ├── .env.prod.example
 ├── docker-compose.yml
-└── docker-compose.prod.yml
+└── production/
+    ├── ec2/     # original single-server deployment
+    └── aws/     # EC2 + RDS + S3/CloudFront deployment
 ```
 
 `common-api` contains deliberately shared API contracts. `common-events` contains Kafka event contracts used across service boundaries.
@@ -308,7 +310,9 @@ Use `docker compose down -v` only when the persistent local data should also be 
 
 The reusable `Test and build` workflow runs backend tests, validates the Compose configuration, and builds the production images. The production workflow is triggered manually from `main`, reuses CI as a validation gate, connects to the VPS through SSH, updates `/opt/MarketHub-v2` to `origin/main`, and recreates the Compose stack. It also preserves whether the observability profile was enabled before deployment.
 
-Required GitHub Actions secrets:
+See the [single-EC2 deployment guide](production/ec2/DEPLOYMENT.md) for server setup and deployment commands.
+
+Required GitHub Actions secrets for the original single-server workflow:
 
 - `VPS_HOST`
 - `VPS_USER`
@@ -318,7 +322,7 @@ Required GitHub Actions secrets:
 
 ## Production deployment
 
-Production is deployed with `docker-compose.prod.yml`. The VPS needs Docker, Docker Compose, Git, and publicly reachable ports `22`, `80`, and `443`. Caddy is the public entry point: it serves the frontend and reverse-proxies `/api/` to the gateway and `/auth/` to Keycloak. PostgreSQL, Kafka, Redis, Eureka, and the application services remain inside the Docker network.
+The single-server deployment uses `production/ec2/docker-compose.prod.yml` through `bash production/ec2/compose.sh`. The VPS needs Docker, Docker Compose, Git, and publicly reachable ports `22`, `80`, and `443`. Caddy is the public entry point: it serves the frontend and reverse-proxies `/api/` to the gateway and `/auth/` to Keycloak. PostgreSQL, Kafka, Redis, Eureka, and the application services remain inside the Docker network.
 
 ### First deployment
 
@@ -343,18 +347,14 @@ At minimum, replace the example values for:
 Then start the platform:
 
 ```bash
-docker compose \
-  -f docker-compose.prod.yml \
-  --env-file .env.prod \
+bash production/ec2/compose.sh \
   up -d --build
 ```
 
 To include the observability stack:
 
 ```bash
-docker compose \
-  -f docker-compose.prod.yml \
-  --env-file .env.prod \
+bash production/ec2/compose.sh \
   --profile observability \
   up -d --build
 ```
@@ -362,8 +362,8 @@ docker compose \
 ### Verify the deployment
 
 ```bash
-docker compose -f docker-compose.prod.yml --env-file .env.prod ps
-docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f gateway-service frontend
+bash production/ec2/compose.sh ps
+bash production/ec2/compose.sh logs -f gateway-service frontend
 ```
 
 ### Manual update
@@ -372,9 +372,7 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod logs -f gateway-s
 git fetch origin main
 git reset --hard origin/main
 
-docker compose \
-  -f docker-compose.prod.yml \
-  --env-file .env.prod \
+bash production/ec2/compose.sh \
   up -d --build
 ```
 

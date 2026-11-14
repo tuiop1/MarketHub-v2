@@ -1,0 +1,37 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$ORIGIN_DOMAIN} {
+	# CloudFront supplies this secret. Reject direct requests before proxying.
+	@unauthorized not header X-Markethub-Origin {$CLOUDFRONT_ORIGIN_SECRET}
+	respond @unauthorized "Forbidden" 403
+
+	encode zstd gzip
+	redir /auth {$PUBLIC_APP_URL}/auth/ 308
+
+	handle_path /auth/* {
+		reverse_proxy keycloak:8080 {
+			header_up Host {$PUBLIC_APP_HOST}
+			header_up X-Forwarded-Host {$PUBLIC_APP_HOST}
+			header_up X-Forwarded-Proto https
+			header_up X-Forwarded-Port 443
+			header_up -X-Markethub-Origin
+		}
+	}
+
+	handle /api/* {
+		reverse_proxy gateway-service:8080 {
+			header_up Host {$PUBLIC_APP_HOST}
+			header_up X-Forwarded-Host {$PUBLIC_APP_HOST}
+			header_up X-Forwarded-Proto https
+			header_up X-Forwarded-Port 443
+			header_up -X-Markethub-Origin
+		}
+	}
+
+	# Angular is hosted in S3. Do not turn backend errors into SPA HTML.
+	handle {
+		respond "Not found" 404
+	}
+}

@@ -53,6 +53,12 @@ frontend/node_modules/
 frontend/dist/
 frontend/.angular/
 
+### AWS deployment runtime files ###
+production/aws/certs/*.pem
+
+### Local AWS deployment notes ###
+/production/aws/**/*.md
+
 ### Mac OS ###
 .DS_Store
 

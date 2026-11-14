@@ -1,0 +1,623 @@
+# Standalone AWS runtime. Spring images are built in CI; other images are official releases.
+# Memory limits are initial demo settings, not measured capacity guarantees.
+name: markethub-v2-aws
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.6.4
+    command: [start, --import-realm]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://${RDS_HOST:?RDS_HOST is required}:${RDS_PORT:-5432}/keycloak?sslmode=verify-full&sslrootcert=/etc/markethub/rds/global-bundle.pem
+      KC_DB_USERNAME: markethub_keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?KEYCLOAK_DB_PASSWORD is required}
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?KEYCLOAK_ADMIN_PASSWORD is required}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:?KEYCLOAK_ADMIN_CLIENT_SECRET must be set}
+      PUBLIC_APP_URL: https://${PUBLIC_APP_HOST:?PUBLIC_APP_HOST is required}
+      KC_HOSTNAME: https://${PUBLIC_APP_HOST:?PUBLIC_APP_HOST is required}/auth
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: 'true'
+      KC_HOSTNAME_STRICT: 'true'
+      KC_HEALTH_ENABLED: 'true'
+      KC_METRICS_ENABLED: 'true'
+      JAVA_OPTS_KC_HEAP: ${KEYCLOAK_HEAP:--Xms128m -Xmx512m}
+      KC_DB_POOL_INITIAL_SIZE: '1'
+      KC_DB_POOL_MIN_SIZE: '1'
+      KC_DB_POOL_MAX_SIZE: '5'
+    expose:
+    - '8080'
+    volumes:
+    - ./docker/keycloak/import:/opt/keycloak/data/import:ro
+    - ./docker/keycloak/themes:/opt/keycloak/themes:ro
+    - type: bind
+      source: ./production/aws/certs/global-bundle.pem
+      target: /etc/markethub/rds/global-bundle.pem
+      read_only: true
+      bind:
+        create_host_path: false
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - 'timeout 5 bash -c ''exec 3<>/dev/tcp/127.0.0.1/9000; printf "GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+        >&3; grep -q "HTTP/1.1 200" <&3'' '
+      interval: 15s
+      timeout: 6s
+      retries: 12
+      start_period: 90s
+    restart: unless-stopped
+    logging: &id001
+      driver: local
+      options:
+        max-size: 10m
+        max-file: '3'
+    labels:
+      logging: alloy
+      # Recreate on release changes so the mounted realm/theme matches the checkout.
+      markethub.release: ${RELEASE_TAG:?RELEASE_TAG is required}
+    mem_limit: 1024m
+  kafka:
+    image: apache/kafka:4.1.1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_LISTENERS: PLAINTEXT://:29092,CONTROLLER://:29093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_HEAP_OPTS: ${KAFKA_HEAP_OPTS:--Xms256m -Xmx384m}
+    volumes:
+    - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - KAFKA_HEAP_OPTS='-Xms16m -Xmx64m' /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:29092 >/dev/null
+        2>&1
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+    logging: *id001
+    labels:
+      logging: alloy
+    mem_limit: 768m
+  redis:
+    image: redis:8-alpine
+    command:
+    - redis-server
+    - --appendonly
+    - 'yes'
+    - --maxmemory
+    - 96mb
+    - --maxmemory-policy
+    - noeviction
+    volumes:
+    - redis-data:/data
+    healthcheck:
+      test:
+      - CMD
+      - redis-cli
+      - ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+    logging: *id001
+    labels:
+      logging: alloy
+    mem_limit: 192m
+  discovery-service:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/markethub/discovery-service:${RELEASE_TAG:?RELEASE_TAG is required}
+    labels:
+      logging: alloy
+    environment:
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-true}
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-0.1}
+      JAVA_TOOL_OPTIONS: -Xms32m -Xmx128m -XX:+ExitOnOutOfMemoryError
+      APP_ENVIRONMENT: aws
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: never
+    restart: unless-stopped
+    logging: *id001
+    mem_limit: 320m
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - wget -q -O /dev/null http://127.0.0.1:8761/actuator/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
+  account-service:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/markethub/account-service:${RELEASE_TAG:?RELEASE_TAG is required}
+    labels:
+      logging: alloy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${RDS_HOST:?RDS_HOST is required}:${RDS_PORT:-5432}/account?sslmode=verify-full&sslrootcert=/etc/markethub/rds/global-bundle.pem
+      SPRING_DATASOURCE_PASSWORD: ${ACCOUNT_DB_PASSWORD:?ACCOUNT_DB_PASSWORD is required}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KEYCLOAK_ISSUER_URI: https://${PUBLIC_APP_HOST:?PUBLIC_APP_HOST is required}/auth/realms/markethub
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
+      KEYCLOAK_SERVER_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:?KEYCLOAK_ADMIN_CLIENT_SECRET must be set}
+      EUREKA_URL: http://discovery-service:8761/eureka/
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-true}
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-0.1}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xms64m -Xmx256m -XX:+ExitOnOutOfMemoryError}
+      APP_ENVIRONMENT: aws
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: never
+      SPRING_DATASOURCE_USERNAME: markethub_account
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: '4'
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: '1'
+    depends_on:
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *id001
+    volumes:
+    - type: bind
+      source: ./production/aws/certs/global-bundle.pem
+      target: /etc/markethub/rds/global-bundle.pem
+      read_only: true
+      bind:
+        create_host_path: false
+    mem_limit: 512m
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - wget -q -O /dev/null http://127.0.0.1:8081/actuator/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
+  catalog-service:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/markethub/catalog-service:${RELEASE_TAG:?RELEASE_TAG is required}
+    labels:
+      logging: alloy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${RDS_HOST:?RDS_HOST is required}:${RDS_PORT:-5432}/catalog?sslmode=verify-full&sslrootcert=/etc/markethub/rds/global-bundle.pem
+      SPRING_DATASOURCE_PASSWORD: ${CATALOG_DB_PASSWORD:?CATALOG_DB_PASSWORD is required}
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      KEYCLOAK_ISSUER_URI: https://${PUBLIC_APP_HOST:?PUBLIC_APP_HOST is required}/auth/realms/markethub
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
+      EUREKA_URL: http://discovery-service:8761/eureka/
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-true}
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-0.1}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xms64m -Xmx256m -XX:+ExitOnOutOfMemoryError}
+      APP_ENVIRONMENT: aws
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: never
+      SPRING_DATASOURCE_USERNAME: markethub_catalog
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: '4'
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: '1'
+    depends_on:
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      account-service:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *id001
+    volumes:
+    - type: bind
+      source: ./production/aws/certs/global-bundle.pem
+      target: /etc/markethub/rds/global-bundle.pem
+      read_only: true
+      bind:
+        create_host_path: false
+    mem_limit: 512m
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - wget -q -O /dev/null http://127.0.0.1:8082/actuator/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
+  cart-service:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/markethub/cart-service:${RELEASE_TAG:?RELEASE_TAG is required}
+    labels:
+      logging: alloy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${RDS_HOST:?RDS_HOST is required}:${RDS_PORT:-5432}/cart?sslmode=verify-full&sslrootcert=/etc/markethub/rds/global-bundle.pem
+      SPRING_DATASOURCE_PASSWORD: ${CART_DB_PASSWORD:?CART_DB_PASSWORD is required}
+      KEYCLOAK_ISSUER_URI: https://${PUBLIC_APP_HOST:?PUBLIC_APP_HOST is required}/auth/realms/markethub
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
+      EUREKA_URL: http://discovery-service:8761/eureka/
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-true}
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-0.1}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xms64m -Xmx256m -XX:+ExitOnOutOfMemoryError}
+      APP_ENVIRONMENT: aws
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: never
+      SPRING_DATASOURCE_USERNAME: markethub_cart
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: '4'
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: '1'
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      account-service:
+        condition: service_healthy
+      catalog-service:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *id001
+    volumes:
+    - type: bind
+      source: ./production/aws/certs/global-bundle.pem
+      target: /etc/markethub/rds/global-bundle.pem
+      read_only: true
+      bind:
+        create_host_path: false
+    mem_limit: 512m
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - wget -q -O /dev/null http://127.0.0.1:8084/actuator/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
+  payment-service:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/markethub/payment-service:${RELEASE_TAG:?RELEASE_TAG is required}
+    labels:
+      logging: alloy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${RDS_HOST:?RDS_HOST is required}:${RDS_PORT:-5432}/payment?sslmode=verify-full&sslrootcert=/etc/markethub/rds/global-bundle.pem
+      SPRING_DATASOURCE_PASSWORD: ${PAYMENT_DB_PASSWORD:?PAYMENT_DB_PASSWORD is required}
+      KEYCLOAK_ISSUER_URI: https://${PUBLIC_APP_HOST:?PUBLIC_APP_HOST is required}/auth/realms/markethub
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
+      EUREKA_URL: http://discovery-service:8761/eureka/
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-true}
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-0.1}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xms64m -Xmx256m -XX:+ExitOnOutOfMemoryError}
+      APP_ENVIRONMENT: aws
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: never
+      SPRING_DATASOURCE_USERNAME: markethub_payment
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: '4'
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: '1'
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *id001
+    volumes:
+    - type: bind
+      source: ./production/aws/certs/global-bundle.pem
+      target: /etc/markethub/rds/global-bundle.pem
+      read_only: true
+      bind:
+        create_host_path: false
+    mem_limit: 512m
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - wget -q -O /dev/null http://127.0.0.1:8085/actuator/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
+  order-service:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/markethub/order-service:${RELEASE_TAG:?RELEASE_TAG is required}
+    labels:
+      logging: alloy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${RDS_HOST:?RDS_HOST is required}:${RDS_PORT:-5432}/orders?sslmode=verify-full&sslrootcert=/etc/markethub/rds/global-bundle.pem
+      SPRING_DATASOURCE_PASSWORD: ${ORDER_DB_PASSWORD:?ORDER_DB_PASSWORD is required}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      KEYCLOAK_ISSUER_URI: https://${PUBLIC_APP_HOST:?PUBLIC_APP_HOST is required}/auth/realms/markethub
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
+      EUREKA_URL: http://discovery-service:8761/eureka/
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-true}
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-0.1}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xms64m -Xmx256m -XX:+ExitOnOutOfMemoryError}
+      APP_ENVIRONMENT: aws
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: never
+      SPRING_DATASOURCE_USERNAME: markethub_order
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: '4'
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: '1'
+    depends_on:
+      kafka:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      account-service:
+        condition: service_healthy
+      catalog-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *id001
+    volumes:
+    - type: bind
+      source: ./production/aws/certs/global-bundle.pem
+      target: /etc/markethub/rds/global-bundle.pem
+      read_only: true
+      bind:
+        create_host_path: false
+    mem_limit: 512m
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - wget -q -O /dev/null http://127.0.0.1:8083/actuator/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
+  notification-service:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/markethub/notification-service:${RELEASE_TAG:?RELEASE_TAG is required}
+    labels:
+      logging: alloy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-disabled}
+      SENDGRID_FROM_EMAIL: ${SENDGRID_FROM_EMAIL:-noreply@markethub.local}
+      SENDGRID_FROM_NAME: ${SENDGRID_FROM_NAME:-MarketHub}
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-true}
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-0.1}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xms64m -Xmx256m -XX:+ExitOnOutOfMemoryError}
+      APP_ENVIRONMENT: aws
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: never
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *id001
+    mem_limit: 384m
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - wget -q -O /dev/null http://127.0.0.1:8086/actuator/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
+  gateway-service:
+    image: ${ECR_REGISTRY:?ECR_REGISTRY is required}/markethub/gateway-service:${RELEASE_TAG:?RELEASE_TAG is required}
+    labels:
+      logging: alloy
+    environment:
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      REQUEST_LIMIT: 50
+      WINDOW_SIZE: 1m
+      KEYCLOAK_ISSUER_URI: https://${PUBLIC_APP_HOST:?PUBLIC_APP_HOST is required}/auth/realms/markethub
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/markethub/protocol/openid-connect/certs
+      EUREKA_URL: http://discovery-service:8761/eureka/
+      MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://tempo:4318/v1/traces
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: ${OTLP_TRACING_ENABLED:-true}
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: ${TRACING_SAMPLING_PROBABILITY:-0.1}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--Xms64m -Xmx256m -XX:+ExitOnOutOfMemoryError}
+      APP_ENVIRONMENT: aws
+      MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: never
+    depends_on:
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+      account-service:
+        condition: service_healthy
+      catalog-service:
+        condition: service_healthy
+      cart-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *id001
+    mem_limit: 512m
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - wget -q -O /dev/null http://127.0.0.1:8080/actuator/health || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 120s
+  prometheus:
+    profiles:
+    - observability
+    image: prom/prometheus:v3.7.3
+    command:
+    - --config.file=/etc/prometheus/prometheus.yml
+    - --storage.tsdb.path=/prometheus
+    - --storage.tsdb.retention.time=${PROMETHEUS_RETENTION_TIME:-24h}
+    - --storage.tsdb.retention.size=${PROMETHEUS_RETENTION_SIZE:-512MB}
+    volumes:
+    - ./production/aws/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    - prometheus-data:/prometheus
+    restart: unless-stopped
+    logging: *id001
+    labels:
+      logging: alloy
+    mem_limit: 256m
+  loki:
+    profiles:
+    - observability
+    image: grafana/loki:3.7.4
+    command:
+    - -config.file=/etc/loki/loki-config.yaml
+    volumes:
+    - ./production/aws/observability/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+    - loki-data:/loki
+    restart: unless-stopped
+    logging: *id001
+    labels:
+      logging: alloy
+    mem_limit: 320m
+  alloy:
+    profiles:
+    - observability
+    image: grafana/alloy:v1.18.0
+    command:
+    - run
+    - --server.http.listen-addr=0.0.0.0:12345
+    - --storage.path=/var/lib/alloy/data
+    - /etc/alloy/config.alloy
+    volumes:
+    - ./production/aws/observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+    - alloy-data:/var/lib/alloy/data
+    depends_on:
+    - loki
+    restart: unless-stopped
+    logging: *id001
+    labels:
+      logging: alloy
+    mem_limit: 128m
+  grafana:
+    profiles:
+    - observability
+    image: grafana/grafana:13.1.1
+    ports:
+    - 127.0.0.1:3001:3000
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+    volumes:
+    - grafana-data:/var/lib/grafana
+    - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+    - loki
+    - prometheus
+    - tempo
+    restart: unless-stopped
+    logging: *id001
+    labels:
+      logging: alloy
+    mem_limit: 192m
+  tempo:
+    profiles:
+    - observability
+    image: grafana/tempo:2.9.0
+    command:
+    - -config.file=/etc/tempo/tempo.yaml
+    volumes:
+    - ./production/aws/observability/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+    - tempo-data:/var/tempo
+    restart: unless-stopped
+    logging: *id001
+    labels:
+      logging: alloy
+    mem_limit: 256m
+  caddy:
+    labels:
+      logging: alloy
+      # A fixed image tag alone would not detect a changed mounted Caddyfile.
+      markethub.release: ${RELEASE_TAG:?RELEASE_TAG is required}
+    image: caddy:2.11.4-alpine
+    environment:
+      ORIGIN_DOMAIN: ${ORIGIN_DOMAIN:?ORIGIN_DOMAIN is required}
+      PUBLIC_APP_HOST: ${PUBLIC_APP_HOST:?PUBLIC_APP_HOST is required}
+      PUBLIC_APP_URL: https://${PUBLIC_APP_HOST:?PUBLIC_APP_HOST is required}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required}
+      CLOUDFRONT_ORIGIN_SECRET: ${CLOUDFRONT_ORIGIN_SECRET:?CLOUDFRONT_ORIGIN_SECRET is required}
+    ports:
+    - 80:80
+    - 443:443
+    volumes:
+    - type: bind
+      source: ./production/aws/caddy/Caddyfile
+      target: /etc/caddy/Caddyfile
+      read_only: true
+      bind:
+        create_host_path: false
+    - caddy-data:/data
+    - caddy-config:/config
+    depends_on:
+      gateway-service:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - wget -q -O /dev/null http://127.0.0.1:2019/config/ || exit 1
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    mem_limit: 96m
+    logging: *id001
+    restart: unless-stopped
+  db-init:
+    image: postgres:16.14-alpine3.24
+    profiles:
+    - tools
+    entrypoint:
+    - bash
+    - /init/init.sh
+    environment:
+      PGHOST: ${RDS_HOST:?RDS_HOST is required}
+      PGPORT: ${RDS_PORT:-5432}
+      PGDATABASE: postgres
+      PGUSER: ${RDS_ADMIN_USER:-postgres}
+      PGPASSWORD: ${RDS_ADMIN_PASSWORD:-}
+      PGSSLMODE: verify-full
+      PGSSLROOTCERT: /etc/markethub/rds/global-bundle.pem
+      ACCOUNT_DB_PASSWORD: ${ACCOUNT_DB_PASSWORD:?ACCOUNT_DB_PASSWORD is required}
+      CATALOG_DB_PASSWORD: ${CATALOG_DB_PASSWORD:?CATALOG_DB_PASSWORD is required}
+      CART_DB_PASSWORD: ${CART_DB_PASSWORD:?CART_DB_PASSWORD is required}
+      ORDER_DB_PASSWORD: ${ORDER_DB_PASSWORD:?ORDER_DB_PASSWORD is required}
+      PAYMENT_DB_PASSWORD: ${PAYMENT_DB_PASSWORD:?PAYMENT_DB_PASSWORD is required}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?KEYCLOAK_DB_PASSWORD is required}
+    volumes:
+    - type: bind
+      source: ./production/aws/certs/global-bundle.pem
+      target: /etc/markethub/rds/global-bundle.pem
+      read_only: true
+      bind:
+        create_host_path: false
+    - ./production/aws/rds:/init:ro
+    mem_limit: 128m
+    restart: 'no'
+volumes:
+  kafka-data:
+    name: markethub-v2-aws_kafka-data
+  redis-data:
+    name: markethub-v2-aws_redis-data
+  loki-data:
+    name: markethub-v2-aws_loki-data
+  alloy-data:
+    name: markethub-v2-aws_alloy-data
+  grafana-data:
+    name: markethub-v2-aws_grafana-data
+  prometheus-data:
+    name: markethub-v2-aws_prometheus-data
+  tempo-data:
+    name: markethub-v2-aws_tempo-data
+  caddy-data:
+    name: markethub-v2-aws_caddy-data
+  caddy-config:
+    name: markethub-v2-aws_caddy-config
