@@ -103,6 +103,6 @@
   <a routerLink="/register" [queryParams]="{ type: 'merchant' }">Open a shop</a
   ><span class="footer-note">Payments in this project are simulated.</span>
 </footer>
-@if (diagnosticsAvailable) {
+@if (diagnostics.enabled()) {
   <mh-diagnostics />
 }

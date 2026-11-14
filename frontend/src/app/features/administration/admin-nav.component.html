@@ -1,5 +1,19 @@
-<nav class="tab-nav" aria-label="Administration">
-  <a routerLink="/admin/categories" routerLinkActive="active">Categories</a
-  ><a routerLink="/admin/merchants" routerLinkActive="active">Shops</a
-  ><a routerLink="/admin/customers" routerLinkActive="active">Customers</a>
-</nav>
+<div class="admin-navigation">
+  <nav class="tab-nav" aria-label="Administration">
+    <a routerLink="/admin/categories" routerLinkActive="active">Categories</a
+    ><a routerLink="/admin/merchants" routerLinkActive="active">Shops</a
+    ><a routerLink="/admin/customers" routerLinkActive="active">Customers</a>
+  </nav>
+  @if (diagnostics.available()) {
+    <label class="checkbox-label" for="admin-diagnostics-switch">
+      <input
+        id="admin-diagnostics-switch"
+        type="checkbox"
+        role="switch"
+        [checked]="diagnostics.enabled()"
+        (change)="toggleDiagnostics($event)"
+      />
+      Diagnostics
+    </label>
+  }
+</div>

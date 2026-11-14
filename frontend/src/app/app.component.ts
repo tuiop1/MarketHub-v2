@@ -4,7 +4,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { AuthService } from './core/auth/auth.service';
 import { IconComponent } from './shared/ui/icon.component';
 import { DiagnosticsComponent } from './shared/ui/diagnostics.component';
-import { environment } from '../environments/environment';
+import { DiagnosticsService } from './core/diagnostics/diagnostics.service';
 @Component({
   selector: 'app-root',
   imports: [RouterOutlet, RouterLink, RouterLinkActive, IconComponent, DiagnosticsComponent],
@@ -13,7 +13,7 @@ import { environment } from '../environments/environment';
   styleUrl: './app.component.scss',
 })
 export class AppComponent {
-  readonly diagnosticsAvailable = environment.diagnostics;
+  readonly diagnostics = inject(DiagnosticsService);
   readonly auth = inject(AuthService);
   readonly menuOpen = signal(false);
   private readonly router = inject(Router);

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { DiagnosticsService } from '../../core/diagnostics/diagnostics.service';
 
 @Component({
@@ -10,9 +11,13 @@ import { DiagnosticsService } from '../../core/diagnostics/diagnostics.service';
 export class DiagnosticsComponent {
   readonly diagnostics = inject(DiagnosticsService);
   readonly collapsed = signal(false);
+  private readonly document = inject(DOCUMENT);
 
-  toggle(event: Event): void {
-    this.collapsed.set(false);
-    this.diagnostics.setEnabled((event.target as HTMLInputElement).checked);
+  close(): void {
+    this.diagnostics.setEnabled(false);
+    const target =
+      this.document.getElementById('admin-diagnostics-switch') ??
+      this.document.getElementById('main-content');
+    target?.focus();
   }
 }

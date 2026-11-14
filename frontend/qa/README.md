@@ -29,3 +29,11 @@ An actual isolated Keycloak 26.6.4 instance loaded the theme. HTTP integration c
 Production/local builds, TypeScript, Prettier and generated-theme freshness checks passed. The design detector reported only the established Plus Jakarta Sans font advisory; the typeface was deliberately retained for consistency.
 
 Rendered verification is **not complete**: browser automation exposed no available browser, so desktop/mobile alignment, overlap, contrast and actual browser focus behavior could not be visually checked. No screenshot from an earlier task is evidence for this change. DOM tests and HTTP checks do not replace that inspection. Actual deployment/backend integration remains outside these isolated checks.
+
+## Admin diagnostics switch — 2026-11-15
+
+The switch now lives beside the administration tabs and is available to authenticated administrators in all builds, including production. The floating panel has no global switch; its Close action disables recording and restores focus to the admin switch, or the main content when outside Administration. Role loss/sign-out hides the panel immediately and clears history and opt-in state.
+
+All 101 tests across 12 files passed. Coverage includes anonymous/customer/merchant denial, Admin opt-in, role loss/sign-out with an in-flight response, navigation between admin pages, Escape focus, Clear and Close. Production/local builds and TypeScript checks passed with no diagnostics environment flag.
+
+Browser verification used the real Keycloak 26.6.4 login flow with a disposable Admin identity and an isolated GET-only fixture API. It checked the default-off admin switch, navigation between admin pages, recording across public pages, Clear, Collapse/Expand, Escape focus, Close focus, and sign-out cleanup. No real realm, backend or deployment was changed. Screenshots `admin-diagnostics-desktop-fixtures.jpg` (CSS viewport 1280 × 900) and `admin-diagnostics-mobile-fixtures.jpg` (CSS viewport 390 × 844) show the final UI with synthetic data. No horizontal overflow was observed; the mobile panel retains 16px margins beside the viewport scrollbar.
