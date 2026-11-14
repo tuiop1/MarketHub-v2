@@ -25,11 +25,11 @@ Tokens stay in memory. After a full page reload, sign in again to reuse the Keyc
 
 ## API diagnostics
 
-In `npm start` or a `--configuration=local` build, use the **Diagnostics** switch in the bottom-right corner. It starts off. Enable it before navigating or performing an action; the panel shows the latest 25 API requests, including pending/cancelled requests, HTTP status, duration and request/correlation IDs when supplied. Collapse it, clear the list, or switch it off. Recording is memory-only; switching it off clears the list, and a full reload resets it.
+Sign in with an **Admin** account, open **Administration**, then use the **Diagnostics** switch beside the Categories, Shops and Customers tabs. It is available in every build, including production, and starts off. Enable it before navigating or performing an action; the panel shows the latest 25 API requests, including pending/cancelled requests, HTTP status, duration and request/correlation IDs when supplied. The panel appears in the bottom-right corner and stays visible across pages. Collapse it, clear the list, close it, or switch it off from Administration. Recording is memory-only; switching it off clears the list, a full reload resets it, and signing out or losing the Admin role disables it and clears the list.
 
 Only same-origin `/api/v1/` metadata is captured. Request/response bodies, request headers, query values and Keycloak requests are excluded. Cache hit/miss labels require an `X-Cache` response header; otherwise the panel says **Not reported**. HTTP 304 is labeled **Revalidated**. The current backend's internal Redis cache does not expose hits through HTTP, so diagnostics cannot report those hits. No backend change or browser cache heuristic was added.
 
-Production builds have `diagnostics: false`: the switch is absent and the interceptor is not registered. Normal user-facing errors and success messages remain with the relevant workflow.
+Access is controlled by the existing Admin role, not an environment flag. Anonymous users, customers and merchants cannot enable recording or see the panel. Normal user-facing errors and success messages remain with the relevant workflow.
 
 ## Keycloak theme
 

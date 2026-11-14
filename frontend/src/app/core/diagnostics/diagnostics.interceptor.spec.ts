@@ -4,19 +4,23 @@ import { TestBed } from '@angular/core/testing';
 import { apiErrorInterceptor } from '../http/api-error.interceptor';
 import { ApiFailure } from '../http/api-error';
 import { diagnosticsInterceptor } from './diagnostics.interceptor';
-import { DIAGNOSTICS_AVAILABLE, DiagnosticsService } from './diagnostics.service';
+import { DiagnosticsService } from './diagnostics.service';
+import { AuthService } from '../auth/auth.service';
+import { authStub } from '../../testing/fixtures';
 
 describe('Opt-in API diagnostics', () => {
   let client: HttpClient;
   let http: HttpTestingController;
   let diagnostics: DiagnosticsService;
+  let auth: ReturnType<typeof authStub>;
 
   beforeEach(() => {
+    auth = authStub(['ADMIN']);
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([apiErrorInterceptor, diagnosticsInterceptor])),
         provideHttpClientTesting(),
-        { provide: DIAGNOSTICS_AVAILABLE, useValue: true },
+        { provide: AuthService, useValue: auth },
       ],
     });
     client = TestBed.inject(HttpClient);
@@ -133,14 +137,37 @@ describe('Opt-in API diagnostics', () => {
     expect(diagnostics.entries()[0].path).toBe('/api/v1/products/29');
   });
 
-  it('cannot be enabled when unavailable in the production environment', () => {
-    TestBed.resetTestingModule();
-    TestBed.configureTestingModule({
-      providers: [{ provide: DIAGNOSTICS_AVAILABLE, useValue: false }],
-    });
-    const unavailable = TestBed.inject(DiagnosticsService);
-    unavailable.setEnabled(true);
-    expect(unavailable.enabled()).toBe(false);
-    expect(unavailable.start('GET', '/api/v1/products')).toBeNull();
+  it.each([
+    { roles: [] },
+    { roles: ['CUSTOMER'] },
+    { roles: ['MERCHANT'] },
+    { roles: ['MERCHANT_PENDING'] },
+  ])('does not enable or record diagnostics for $roles', ({ roles }) => {
+    auth.roles.set(roles);
+    auth.authenticated.set(roles.length > 0);
+    diagnostics.setEnabled(true);
+    expect(diagnostics.available()).toBe(false);
+    expect(diagnostics.enabled()).toBe(false);
+    client.get('/api/v1/products').subscribe();
+    http.expectOne('/api/v1/products').flush([]);
+    expect(diagnostics.entries()).toEqual([]);
+  });
+
+  it.each(['role removal', 'sign out'])('stops recording and clears entries on %s', (reason) => {
+    diagnostics.setEnabled(true);
+    client.get('/api/v1/products').subscribe();
+    const pending = http.expectOne('/api/v1/products');
+    expect(diagnostics.entries()).toHaveLength(1);
+    if (reason === 'role removal') auth.roles.set(['CUSTOMER']);
+    else auth.authenticated.set(false);
+    expect(diagnostics.enabled()).toBe(false);
+    expect(diagnostics.entries()).toEqual([]);
+    TestBed.tick();
+    auth.roles.set(['ADMIN']);
+    auth.authenticated.set(true);
+    expect(diagnostics.enabled()).toBe(false);
+    pending.flush([]);
+    diagnostics.setEnabled(true);
+    expect(diagnostics.entries()).toEqual([]);
   });
 });

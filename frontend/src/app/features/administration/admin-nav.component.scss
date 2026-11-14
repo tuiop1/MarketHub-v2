@@ -1,0 +1,20 @@
+.admin-navigation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-5);
+  margin-bottom: var(--space-7);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+
+  .tab-nav {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .checkbox-label {
+    margin-left: auto;
+    color: var(--color-text-muted);
+  }
+}

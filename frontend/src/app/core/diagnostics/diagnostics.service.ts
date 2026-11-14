@@ -1,11 +1,6 @@
 import { HttpHeaders } from '@angular/common/http';
-import { inject, Injectable, InjectionToken, signal } from '@angular/core';
-import { environment } from '../../../environments/environment';
-
-export const DIAGNOSTICS_AVAILABLE = new InjectionToken<boolean>('Diagnostics available', {
-  providedIn: 'root',
-  factory: () => environment.diagnostics,
-});
+import { computed, effect, inject, Injectable, signal } from '@angular/core';
+import { AuthService } from '../auth/auth.service';
 
 export interface DiagnosticEntry {
   readonly id: number;
@@ -28,15 +23,22 @@ function cacheResult(status: number, headers: HttpHeaders): DiagnosticEntry['cac
 
 @Injectable({ providedIn: 'root' })
 export class DiagnosticsService {
-  readonly available = inject(DIAGNOSTICS_AVAILABLE);
+  private readonly auth = inject(AuthService);
+  readonly available = computed(() => this.auth.hasRole('ADMIN'));
   private readonly enabledState = signal(false);
   private readonly entryState = signal<readonly DiagnosticEntry[]>([]);
-  readonly enabled = this.enabledState.asReadonly();
-  readonly entries = this.entryState.asReadonly();
+  readonly enabled = computed(() => this.available() && this.enabledState());
+  readonly entries = computed(() => (this.enabled() ? this.entryState() : []));
   private nextId = 0;
 
+  constructor() {
+    effect(() => {
+      if (!this.available()) this.setEnabled(false);
+    });
+  }
+
   setEnabled(enabled: boolean): void {
-    this.enabledState.set(this.available && enabled);
+    this.enabledState.set(this.available() && enabled);
     this.clear();
   }
 
@@ -45,7 +47,7 @@ export class DiagnosticsService {
   }
 
   start(method: string, url: string): number | null {
-    if (!this.available || !this.enabled()) return null;
+    if (!this.enabled()) return null;
     const id = ++this.nextId;
     this.entryState.update((entries) =>
       [
@@ -66,6 +68,7 @@ export class DiagnosticsService {
   }
 
   finish(id: number, status: number, durationMs: number, headers: HttpHeaders): void {
+    if (!this.enabled()) return;
     this.entryState.update((entries) =>
       entries.map((entry) =>
         entry.id === id
@@ -85,6 +88,7 @@ export class DiagnosticsService {
   }
 
   cancel(id: number, durationMs: number): void {
+    if (!this.enabled()) return;
     this.entryState.update((entries) =>
       entries.map((entry) =>
         entry.id === id && entry.state === 'pending'
