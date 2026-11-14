@@ -1,0 +1,63 @@
+<section class="checkout" aria-label="Checkout">
+  <h2>{{ cart() ? 'Order summary' : 'Direct checkout' }}</h2>
+  <p class="notice warning">
+    Demo payments only. No real money is charged. Card and Google Pay simulate success; QR simulates
+    a failed payment.
+  </p>
+  @if (order(); as result) {
+    <div
+      class="notice"
+      [class.success]="result.status === 'PAID'"
+      [class.error]="result.status !== 'PAID'"
+      role="status"
+    >
+      <strong>{{
+        result.status === 'PAID' ? 'Order paid' : 'Order status: ' + statusLabel(result.status)
+      }}</strong>
+      <p>Order {{ result.id }}</p>
+      <p>{{ result.totalPriceCents | money }}</p>
+      @if (result.status === 'PAYMENT_FAILED') {
+        <p>Payment failed. Your cart has been kept.</p>
+      }
+      @if (result.status === 'COMPENSATION_FAILED') {
+        <p>This order needs attention. Check your order history before placing another order.</p>
+      }
+    </div>
+    <div class="actions">
+      <a class="button primary" routerLink="/orders">View orders</a>
+      @if (result.status === 'PAYMENT_FAILED') {
+        <button class="button subtle" (click)="order.set(null)">Choose another method</button>
+      }
+    </div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <fieldset [disabled]="action.busy() || uncertain()">
+        <label
+          >Payment method<select [formControl]="payment">
+            <option value="CARD">Card (simulation)</option>
+            <option value="GOOGLE_PAY">Google Pay (simulation)</option>
+            <option value="QR">QR (simulated failure)</option>
+          </select></label
+        >
+        <div class="total">
+          <span>Total</span><strong>{{ total() | money }}</strong>
+        </div>
+        <button
+          class="button primary checkout-button"
+          type="submit"
+          [disabled]="disabled() || payment.invalid || (!cart() && !items().length)"
+        >
+          {{ action.busy() ? 'Placing order…' : 'Place simulated order' }}
+        </button>
+      </fieldset>
+    </form>
+    <mh-feedback [error]="action.error()" />
+    @if (uncertain()) {
+      <p class="notice warning">
+        The outcome is uncertain. Check your orders before trying again to avoid placing a duplicate
+        order.
+      </p>
+      <a class="button subtle" routerLink="/orders">Check order history</a>
+    }
+  }
+</section>

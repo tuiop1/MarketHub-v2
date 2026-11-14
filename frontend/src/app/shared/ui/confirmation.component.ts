@@ -9,20 +9,8 @@ import {
 } from '@angular/core';
 @Component({
   selector: 'mh-confirmation',
-  template: `<dialog
-    #dialog
-    aria-labelledby="confirm-title"
-    aria-describedby="confirm-message"
-    (cancel)="cancel($event)"
-  >
-    <h2 id="confirm-title">{{ title() }}</h2>
-    <p id="confirm-message">{{ message() }}</p>
-    <div class="actions">
-      <button class="button subtle" autofocus (click)="cancelled.emit()">Cancel</button>
-      <button class="button danger" (click)="confirmed.emit()">{{ confirmLabel() }}</button>
-    </div>
-  </dialog>`,
-  styleUrl: './confirmation.component.css',
+  templateUrl: './confirmation.component.html',
+  styleUrl: './confirmation.component.scss',
 })
 export class ConfirmationComponent implements AfterViewInit, OnDestroy {
   readonly title = input.required<string>();

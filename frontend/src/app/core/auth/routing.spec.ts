@@ -5,11 +5,11 @@ import { Component } from '@angular/core';
 import { authGuard } from './auth.guard';
 import { AuthService } from './auth.service';
 import { authStub } from '../../testing/fixtures';
-@Component({ selector: 'test-protected', template: 'Protected' })
+@Component({ selector: 'test-protected', templateUrl: './testing/protected-page.fixture.html' })
 class ProtectedPage {}
-@Component({ selector: 'test-sign-in', template: 'Sign in' })
+@Component({ selector: 'test-sign-in', templateUrl: './testing/sign-in-page.fixture.html' })
 class SignInPage {}
-@Component({ selector: 'test-denied', template: 'Restricted' })
+@Component({ selector: 'test-denied', templateUrl: './testing/denied-page.fixture.html' })
 class DeniedPage {}
 describe('Role-aware routing', () => {
   it.each(

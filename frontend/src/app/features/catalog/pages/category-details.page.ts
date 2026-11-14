@@ -6,22 +6,7 @@ import { FeedbackComponent, LoadingComponent } from '../../../shared/ui/feedback
 @Component({
   imports: [RouterLink, FeedbackComponent, LoadingComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<nav class="breadcrumb" aria-label="Breadcrumb">
-      <a routerLink="/categories">Categories</a><span>/</span><span>Category details</span>
-    </nav>
-    @if (resource.state().status === 'loading') {
-      <mh-loading label="Loading category…" />
-    }
-    <mh-feedback [error]="resource.state().error" [retryable]="true" (retry)="resource.reload()" />
-    @if (resource.state().value; as category) {
-      <section class="status-page">
-        <h1>{{ category.name }}</h1>
-        <p class="detail-copy">
-          {{ category.description || 'This category has no description yet.' }}
-        </p>
-        <a class="button primary" routerLink="/products">Explore the marketplace</a>
-      </section>
-    }`,
+  templateUrl: './category-details.page.html',
 })
 export class CategoryDetailsPage {
   private readonly api = inject(CatalogApi);

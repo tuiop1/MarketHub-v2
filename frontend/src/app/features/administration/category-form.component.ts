@@ -9,46 +9,7 @@ import { nonBlank } from '../../shared/utilities/validators';
 @Component({
   selector: 'mh-category-form',
   imports: [ReactiveFormsModule, FieldErrorComponent, FeedbackComponent],
-  template: ` <form [formGroup]="form" (ngSubmit)="submit()" class="form-panel" novalidate>
-    <h2>{{ category() ? 'Edit category' : 'Add a category' }}</h2>
-    <fieldset [disabled]="action.busy()">
-      <div class="form-grid">
-        <label class="u-span-full" for="category-name"
-          >Category name<input
-            id="category-name"
-            formControlName="name"
-            maxlength="255"
-            aria-describedby="category-name-error" /><mh-field-error
-            [control]="form.controls.name"
-            errorId="category-name-error"
-            [serverError]="action.error()?.fields?.['name'] || ''"
-        /></label>
-        <label class="u-span-full" for="category-description"
-          >Description<textarea
-            id="category-description"
-            formControlName="description"
-            maxlength="1000"
-            aria-describedby="category-description-error"
-          ></textarea
-          ><mh-field-error
-            [control]="form.controls.description"
-            errorId="category-description-error"
-            [serverError]="action.error()?.fields?.['description'] || ''"
-        /></label>
-        <div class="actions u-span-full">
-          <button class="button primary" type="submit">
-            {{ action.busy() ? 'Saving…' : category() ? 'Save category' : 'Create category' }}
-          </button>
-          @if (category()) {
-            <button class="button subtle" type="button" (click)="cancelled.emit()">
-              Cancel edit
-            </button>
-          }
-        </div>
-      </div>
-    </fieldset>
-    <mh-feedback [error]="action.error()" />
-  </form>`,
+  templateUrl: './category-form.component.html',
 })
 export class CategoryFormComponent {
   readonly category = input<Category | null>(null);

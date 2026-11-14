@@ -1,54 +1,104 @@
-# CSS architecture
+# SCSS architecture
 
-The application uses plain CSS, Angular's default emulated component encapsulation and explicit native cascade layers. No Sass, CSS framework, JavaScript theme manager or additional build plugin is needed.
+The application uses SCSS through Angular's bundled Dart Sass compiler, Angular's default emulated component encapsulation and native CSS cascade layers. No new dependency or custom build plugin is required. SCSS organizes and compiles the styles; the browser still receives ordinary CSS.
 
 ## Entry point and ownership
 
 ```text
-src/styles.css                         Angular CLI entry; imports main.css only
+src/styles.scss                        Angular CLI entry; @use './styles/main'
 src/styles/
-  main.css                             declares layers and import order
-  tokens.css                           shared design values, no element styling
-  reset.css                            browser normalization, no theme decisions
-  base.css                             document, typography, links and focus defaults
-  layout.css                           reusable page compositions and grids
+  main.scss                            composition root and cascade-layer order
+  _tokens.scss                         shared runtime CSS custom properties
+  _reset.scss                          browser normalization, no theme decisions
+  _base.scss                           typography, element and focus defaults
+  _layout.scss                         reusable compositions and grids
   components/
-    buttons.css                        .button and its explicit variants
-    forms.css                          controls, labels, validation, form surface, sorting
-    notices.css                        reusable operation feedback
-    badges.css                         state badges
-    navigation.css                     reusable tab navigation
-    tables.css                         tables scoped to .table-wrap
-    directory.css                      public category/shop directory pattern
-  utilities.css                        small, explicit u-* helpers
-  accessibility.css                    reduced-motion preference
-src/app/**/name.component.css           CSS owned by that Angular component
-src/app/**/name.page.css                CSS owned by that routed page
+    _buttons.scss                      buttons and their explicit variants
+    _forms.scss                        controls, labels, validation and form surfaces
+    _notices.scss                      operation feedback
+    _badges.scss                       state badges
+    _navigation.scss                   shared tab navigation
+    _tables.scss                       tables scoped to .table-wrap
+    _directory.scss                    shared category/shop directory pattern
+  _utilities.scss                      small u-* helpers
+  _accessibility.scss                  reduced-motion preference
+  tools/
+    _media.scss                        shared breakpoint map and media mixins; emits no CSS
+src/app/**/name.component.html          referenced with templateUrl
+src/app/**/name.component.scss          component-owned styles referenced with styleUrl
+src/app/**/name.page.html               routed page template
+src/app/**/name.page.scss               page-owned styles when needed
 ```
 
-`styles.css` is kept as the CLI entry to preserve the existing Angular configuration. `main.css` is the sole composition root: importing these globals again from a feature would duplicate styles and obscure their precedence.
+Every component template, including the small routing-test fixtures, is external HTML. The three small feedback/loading/empty components share a TypeScript module and each reference their own HTML file. Components without unique styling reuse shared patterns rather than receiving empty stylesheets. No inline `template`, decorator styles or HTML style attributes remain.
 
-Component CSS is loaded through `styleUrl`, alongside its TypeScript file. Templates can remain inline when small; CSS does not live in TypeScript or `style` attributes. Components without unique styling reuse shared patterns rather than receiving empty stylesheets. For example, the checkout, product card, order details and dialog have their own files; category and shop directories share the deliberately global directory pattern.
+Angular's component generator defaults to `inlineTemplate: false`, `inlineStyle: false` and `style: scss` in `angular.json`. New components therefore follow the same file separation automatically. The formatter includes SCSS and HTML, with the Angular parser applied to every app template, including `.page.html` and test fixtures.
 
-Loading, empty-state and pagination styles belong to their respective shared components, so they are no longer global selectors. The catalog's `.product-grid` and its breakpoints belong to `product-list.page.css`. App navigation, branding, footer and skip link belong to `app.component.css`.
+## Modules and cascade contract
 
-## Cascade contract
+The global layer order remains:
 
-The global order is:
-
-```css
+```scss
 @layer tokens, reset, base, layout, components, utilities, accessibility;
 ```
 
-`main.css` assigns each import to its layer. For normal declarations, a later global layer wins over an earlier one before selector specificity is considered. This is why the sorting control's layout and appearance are kept together in `forms.css`: putting its select width in a lower layout layer would let the generic control width override it.
+`styles.scss` loads the composition root with `@use`. `main.scss` uses the built-in `sass:meta` module to place each CSS-emitting partial inside its original layer:
 
-Angular component styles intentionally stay unlayered and encapsulated. They override the normal layered defaults only inside their component. This makes a card's local typography or a page's special layout independent of the order in which lazy routes load. Do not add layers ad hoc inside components, switch off encapsulation, use `::ng-deep` or import global files into component stylesheets.
+```scss
+@use 'sass:meta';
 
-No IDs, inline styles or `!important` are used to win ordinary styling conflicts. The exception is the reduced-motion accessibility override, which must suppress component animations and transitions when the user requests it. It does not override theme/layout properties or user-origin important rules.
+@layer tokens {
+  @include meta.load-css('tokens');
+}
+```
+
+The underscore marks a Sass partial. Imports omit its underscore and extension. `meta.load-css` is used here because ordinary `@use` must be top-level, while these shared rules must be emitted inside a specific cascade layer. Shared patterns are loaded only by the composition root. Importing a global partial from a feature would duplicate CSS and obscure ownership.
+
+The Fontsource package is loaded with `meta.load-css` inside `@layer base`, after the layer-order declaration. Angular bundles the font assets locally. Do not replace this with a native CSS `@import`: Sass hoists that import above the layer declaration, establishing `base` before `reset` and changing the cascade. Application SCSS uses `@use` and `meta.load-css` throughout.
+
+Angular component styles intentionally remain unlayered and encapsulated, preserving their existing priority over normal layered defaults. No IDs, inline styles, `::ng-deep`, disabled encapsulation or `!important` are used to win normal conflicts. The reduced-motion accessibility override is the deliberate exception: it suppresses motion when requested without altering the theme or user-origin preferences.
+
+For normal declarations, a later global layer takes priority before selector specificity. Keep a shared control's layout and appearance in its owning pattern: for example, the sorting control stays with generic controls in `_forms.scss` so its intended width is not overridden by a higher layer.
+
+## Responsive rules and nesting
+
+Repeated breakpoint values now live in the CSS-free `tools/_media.scss` module:
+
+| Key        | CSS width | Use                                   |
+| ---------- | --------- | ------------------------------------- |
+| phone      | 480px     | single-column narrow layouts          |
+| compact    | 600px     | compact cart/order layouts            |
+| tablet     | 700px     | shared grids and compact spacing      |
+| navigation | 800px     | navigation and detail layout collapse |
+| admin      | 950px     | category administration split         |
+| split      | 1000px    | general two-column layout collapse    |
+| workspace  | 1050px    | merchant workspace and header spacing |
+| wide       | 1300px    | four-column catalog                   |
+
+A component imports only the helper, using a relative path:
+
+```scss
+@use '../../../styles/tools/media' as media;
+
+.product-details {
+  display: grid;
+  grid-template-columns: 1.4fr 0.7fr;
+}
+
+@include media.down('navigation') {
+  .product-details {
+    grid-template-columns: 1fr;
+  }
+}
+```
+
+`media.up('wide')` emits an inclusive min-width query; `media.down('phone')` emits an inclusive max-width query. These preserve the pre-migration pixel thresholds. An unknown key causes a compile-time error. The module produces no selectors, so it is safe to use in encapsulated component styles without copying global CSS.
+
+Use shallow nesting for a root's own modifiers, such as `&.primary` or `&.selected`. Keep selector scope and specificity stable; a grouped nested selector must use `&` for each root it represents. Avoid nesting just to make SCSS look different, deep DOM chains and `@extend` coupling unrelated components.
 
 ## Tokens and units
 
-Use semantic colors: `--color-text`, `--color-text-muted`, `--color-action`, `--color-page`, `--color-surface`, and state-specific surface/text pairs. Raw CSS color literals are centralized in `tokens.css`. The shared palette is retained. Product views use text-only blocks; obsolete product-art color tokens have been removed.
+Use semantic colors: `--color-text`, `--color-text-muted`, `--color-action`, `--color-page`, `--color-surface`, and state-specific surface/text pairs. Raw CSS color literals are centralized in `_tokens.scss`. The shared palette is retained. Product views use text-only blocks; obsolete product-art color tokens have been removed.
 
 Typography has one font-family source, size tokens, font-weight tokens, line heights and tracking. Size names such as `--font-size-14` identify the original reference size at a browser default of 16px; their values are **rem**, not fixed px. The existing size range is recorded explicitly to avoid changing the visual hierarchy during an architectural refactor. A future typography redesign should update that scale intentionally rather than add arbitrary per-page sizes.
 
@@ -56,7 +106,7 @@ The root uses `font-size: 100%`, preserving the browser's font preference. Body 
 
 The spacing scale uses a 4px reference unit: `--space-1` is 0.25rem, `--space-4` is 1rem, and fractional steps retain the original fine spacing. Repeated spacing should use these tokens. A unique grid column proportion or component-specific width stays in its owning stylesheet; not every number needs a global token.
 
-Breakpoints remain literal CSS-pixel media-query conditions and live beside the affected layout. CSS custom properties cannot substitute into ordinary media-query conditions, so a `--breakpoint-mobile` token would suggest functionality it does not provide. No preprocessor is introduced solely to share those values. Shared compositions own shared breakpoints; a page owns its specific collapse threshold.
+Breakpoint values remain CSS-pixel values in the Sass map. CSS custom properties still cannot substitute into ordinary media-query conditions; Sass now supplies those compile-time values through the shared helper. Responsive rules stay with their owning component or shared composition.
 
 ## Naming and selector scope
 
@@ -77,4 +127,4 @@ Breakpoints remain literal CSS-pixel media-query conditions and live beside the 
 
 Run `npm run format:check`, `npm run build` and the existing component tests. Browser checks are still required for cascade/encapsulation issues because DOM unit tests do not prove visual equivalence.
 
-References: [Angular component styling](https://angular.dev/guide/components/styling) and [MDN cascade layers](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@layer).
+References: [Sass modules](https://sass-lang.com/documentation/at-rules/use/), [sass:meta.load-css](https://sass-lang.com/documentation/modules/meta/#load-css), [Angular component styling](https://angular.dev/guide/components/styling) and [MDN cascade layers](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@layer).

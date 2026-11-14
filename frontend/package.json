@@ -6,8 +6,8 @@
     "start": "ng serve --port 3000 --proxy-config proxy.conf.json",
     "build": "ng build",
     "test": "ng test --watch=false",
-    "format": "prettier --write \"src/**/*.{ts,html,css,md}\" \"*.{json,md}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,html,css,md}\" \"*.{json,md}\""
+    "format": "prettier --write \"src/**/*.{ts,html,scss,md}\" \"*.{json,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,html,scss,md}\" \"*.{json,md}\""
   },
   "dependencies": {
     "@angular/common": "^20.3.35",

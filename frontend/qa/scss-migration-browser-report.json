@@ -1,0 +1,174 @@
+{
+  "date": "2026-11-14",
+  "data": "GET-only local fixtures; actual backend and OIDC unavailable",
+  "comparisons": [
+    {
+      "route": "/products",
+      "width": 390,
+      "matches": true,
+      "overflow": false,
+      "elements": 117
+    },
+    {
+      "route": "/products",
+      "width": 800,
+      "matches": true,
+      "overflow": false,
+      "elements": 117
+    },
+    {
+      "route": "/products",
+      "width": 1280,
+      "matches": true,
+      "overflow": false,
+      "elements": 117
+    },
+    {
+      "route": "/products",
+      "width": 1440,
+      "matches": true,
+      "overflow": false,
+      "elements": 117
+    },
+    {
+      "route": "/products/773f4178-ff00-536d-b373-f22b52bc2da0",
+      "width": 390,
+      "matches": true,
+      "overflow": false,
+      "elements": 53
+    },
+    {
+      "route": "/categories",
+      "width": 390,
+      "matches": true,
+      "overflow": false,
+      "elements": 49
+    },
+    {
+      "route": "/merchants",
+      "width": 390,
+      "matches": true,
+      "overflow": false,
+      "elements": 57
+    },
+    {
+      "route": "/register",
+      "width": 390,
+      "matches": true,
+      "overflow": false,
+      "elements": 94
+    },
+    {
+      "route": "/login",
+      "width": 390,
+      "matches": true,
+      "overflow": false,
+      "elements": 45
+    },
+    {
+      "route": "/products/773f4178-ff00-536d-b373-f22b52bc2da0",
+      "width": 1280,
+      "matches": true,
+      "overflow": false,
+      "elements": 53
+    },
+    {
+      "route": "/categories",
+      "width": 1280,
+      "matches": true,
+      "overflow": false,
+      "elements": 49
+    },
+    {
+      "route": "/merchants",
+      "width": 1280,
+      "matches": true,
+      "overflow": false,
+      "elements": 57
+    },
+    {
+      "route": "/register",
+      "width": 1280,
+      "matches": true,
+      "overflow": false,
+      "elements": 94
+    },
+    {
+      "route": "/login",
+      "width": 1280,
+      "matches": true,
+      "overflow": false,
+      "elements": 45
+    },
+    {
+      "route": "/register (empty submit)",
+      "width": 1280,
+      "matches": true,
+      "overflow": false,
+      "elements": 94
+    },
+    {
+      "route": "/categories/717c9b3a-124c-5806-9912-df3de8584419",
+      "width": 390,
+      "matches": true,
+      "overflow": false,
+      "elements": 43
+    },
+    {
+      "route": "/merchants/7d8fadd9-0960-595b-a6c2-266f2ecf77c4",
+      "width": 390,
+      "matches": true,
+      "overflow": false,
+      "elements": 50
+    },
+    {
+      "route": "/register?type=merchant",
+      "width": 390,
+      "matches": true,
+      "overflow": false,
+      "elements": 78
+    },
+    {
+      "route": "/missing-page",
+      "width": 390,
+      "matches": true,
+      "overflow": false,
+      "elements": 39
+    },
+    {
+      "route": "/categories/717c9b3a-124c-5806-9912-df3de8584419",
+      "width": 1280,
+      "matches": true,
+      "overflow": false,
+      "elements": 43
+    },
+    {
+      "route": "/merchants/7d8fadd9-0960-595b-a6c2-266f2ecf77c4",
+      "width": 1280,
+      "matches": true,
+      "overflow": false,
+      "elements": 50
+    },
+    {
+      "route": "/register?type=merchant",
+      "width": 1280,
+      "matches": true,
+      "overflow": false,
+      "elements": 78
+    },
+    {
+      "route": "/missing-page",
+      "width": 1280,
+      "matches": true,
+      "overflow": false,
+      "elements": 39
+    },
+    {
+      "route": "/products (price sort)",
+      "width": 1280,
+      "matches": true,
+      "overflow": false,
+      "elements": 117
+    }
+  ]
+}

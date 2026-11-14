@@ -19,7 +19,7 @@ import { nonBlank, pastDate } from '../../shared/utilities/validators';
   imports: [ReactiveFormsModule, RouterLink, FeedbackComponent, FieldErrorComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './register.page.html',
-  styleUrl: './register.page.css',
+  styleUrl: './register.page.scss',
 })
 export class RegisterPage {
   private readonly fb = inject(FormBuilder).nonNullable;

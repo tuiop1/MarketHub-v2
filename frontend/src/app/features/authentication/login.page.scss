@@ -1,0 +1,17 @@
+.sign-in {
+  max-width: 32.5rem;
+  margin: var(--space-10) auto;
+  padding: var(--space-10);
+  & mh-icon {
+    width: 2rem;
+    height: 2rem;
+    color: var(--color-action);
+    margin-bottom: var(--space-6-5);
+  }
+  & h1 {
+    font-size: var(--font-size-34);
+  }
+}
+.sign-in-note {
+  margin-top: var(--space-4-5);
+}

@@ -101,3 +101,20 @@ Verification for this follow-up: production build passed; all 81 tests across 10
 Product cards, product details and cart rows now use text-only blocks, following the user's explicit requirement that a backend without product images should have no image placeholders in the frontend. The shared product-art component and its CSS/color tokens were removed. Catalog cards lead with name, description, stock and price; product details use information and purchase blocks; cart rows no longer reserve a thumbnail column. The no-image presentation is intentional, not an unavailable-image state.
 
 Verification: production build passes and all 82 tests across 10 files pass. Regression coverage asserts the absence of product media in catalog/details/cart, and a routed product-details test places a direct simulated order through the redesigned purchase area using HttpTestingController. Browser checks at CSS widths 1280 and 390 verified catalog/detail text layouts without horizontal overflow or product-media elements. Browser checks used the isolated read-only HTTP fixtures, not the live backend. Backend/infrastructure files were compared against the start of this follow-up and remain unchanged.
+
+## External HTML and SCSS migration — 2026-11-14
+
+All 36 Angular components now reference external HTML, including three routing-test fixtures. This extracted 33 inline templates and retained the three existing external templates. TypeScript application behavior is unchanged. All 34 owned CSS sources became SCSS, with a module-based global composition root, shared breakpoint mixins and shallow nesting that preserves selector scope. Runtime design tokens, cascade layer priority and Angular encapsulation are retained. No dependencies, backend contracts or infrastructure were changed.
+
+The Angular generator defaults to external HTML/SCSS. Prettier includes SCSS and uses its Angular parser for all app HTML templates. Styling and learning documentation describe the resulting structure.
+
+Verification:
+
+- All 82 tests across 10 files passed with external templates.
+- Production and local-configuration Angular builds passed; TypeScript no-emit and formatting checks passed.
+- All 68 TypeScript files retain the same logic after excluding template/style resource metadata. All 36 template ASTs match after normalizing formatting whitespace and source locations. All referenced resources exist; no inline component templates/styles or owned CSS files remain.
+- All 32 individual component/global partial stylesheet comparisons match after normalizing Sass's redundant native CSS math wrappers. The combined production global rule/declaration stream and layer order match the original.
+- All 24 browser comparisons passed across widths 390, 800, 1280 and 1440. See `qa/README.md` and `qa/scss-migration-browser-report.json` for scope and evidence.
+- Backend, infrastructure and pre-existing user documentation were verified unchanged by SHA-256 comparison.
+
+Live backend/OIDC integration remains unverified because the gateway and Keycloak were unavailable. The browser comparisons used read-only local fixtures; they do not establish real login or payment behavior.
