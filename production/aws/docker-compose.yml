@@ -522,6 +522,8 @@ services:
     profiles:
     - observability
     image: grafana/tempo:2.9.0
+    environment:
+      GOMEMLIMIT: 400MiB
     command:
     - -config.file=/etc/tempo/tempo.yaml
     volumes:
@@ -531,7 +533,7 @@ services:
     logging: *id001
     labels:
       logging: alloy
-    mem_limit: 256m
+    mem_limit: 512m
   caddy:
     labels:
       logging: alloy

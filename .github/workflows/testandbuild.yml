@@ -2,10 +2,17 @@ name: Test and build
 
 on:
   push:
-    branches: [main, dev]
+    branches: [dev]
   pull_request:
     branches: [main, dev]
   workflow_call:
+    inputs:
+      skip_image_builds:
+        type: boolean
+        default: false
+      upload_frontend:
+        type: boolean
+        default: false
 
   workflow_dispatch:
     
@@ -30,6 +37,15 @@ jobs:
           npm ci
           npm test
           npm run build
+
+      - name: Save tested frontend
+        if: inputs.upload_frontend
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: frontend-${{ github.sha }}
+          path: frontend/dist/markethub/browser/
+          if-no-files-found: error
+          retention-days: 3
 
   test:
     name: Run backend tests
@@ -80,7 +96,13 @@ jobs:
           EC2_ENV_FILE="$PWD/.env.prod.example" bash production/ec2/compose.sh --profile observability config --quiet
           AWS_ENV_FILE="$PWD/production/aws/.env.example" bash production/aws/compose.sh --profile observability config --quiet
 
+      - name: Check deployment scripts
+        run: |
+          bash -n production/aws/compose.sh production/aws/deploy.sh
+          python3 -c "import ast, pathlib; ast.parse(pathlib.Path('production/aws/deploy-via-ssm.py').read_text())"
+
       - name: Build production images
+        if: ${{ !inputs.skip_image_builds }}
         run: |
           EC2_ENV_FILE="$PWD/.env.prod.example" \
             bash production/ec2/compose.sh --parallel 2 build
