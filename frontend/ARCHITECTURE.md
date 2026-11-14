@@ -87,3 +87,11 @@ Vitest and Angular TestBed test real components and the real Keycloak adapter wi
 There is no speculative state library, generic CRUD framework, backend alteration, image API, real payment UI or client-side filtering pretending to search the entire paginated catalog. `API_INTEGRATION.md` lists the exact contracts and unsupported capabilities. `REBUILD_NOTES.md` records verification limits and follow-up work.
 
 Reference guidance: [official Keycloak JavaScript adapter](https://www.keycloak.org/securing-apps/javascript-adapter), [Angular route guards](https://angular.dev/guide/routing/route-guards), [Angular Reactive Forms](https://angular.dev/guide/forms/reactive-forms). The local Angular 20 types, Java contracts and automated tests determine the implementation details in this repository.
+
+## Optional diagnostics and identity-provider presentation
+
+`core/diagnostics` contains one bounded in-memory request store and one functional HTTP interceptor. The interceptor sits inside API error normalization so it can observe actual status/response headers while leaving the normal `ApiFailure` contract unchanged. It records at subscription time and marks cancelled reads during teardown. Clear/off never restores entries when older requests complete. Production omits interceptor registration; the store also refuses enablement when diagnostics are unavailable.
+
+`shared/ui/diagnostics.component` owns the bottom-right switch/panel with external HTML and SCSS. It has no network calls, persistent storage, notification framework or access to response bodies. Cache labels describe observable headers only.
+
+The Keycloak theme remains separate from Angular runtime code. `src/keycloak/login.scss` reuses shared tokens, and `scripts/build-keycloak-theme.mjs` emits the stylesheet and self-hosted font into the existing theme directory. Native Keycloak templates remain inherited, reducing upgrade maintenance.

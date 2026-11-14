@@ -1,0 +1,88 @@
+@if (diagnostics.available) {
+  <div class="diagnostics">
+    @if (diagnostics.enabled()) {
+      <aside
+        class="diagnostics-panel"
+        aria-labelledby="diagnostics-title"
+        (keydown.escape)="collapsed.set(true); collapseToggle.focus()"
+      >
+        <header>
+          <h2 id="diagnostics-title">API diagnostics</h2>
+          <button
+            #collapseToggle
+            class="button link"
+            type="button"
+            [attr.aria-expanded]="!collapsed()"
+            aria-controls="diagnostics-body"
+            (click)="collapsed.set(!collapsed())"
+          >
+            {{ collapsed() ? 'Expand' : 'Collapse' }}
+          </button>
+        </header>
+        <div id="diagnostics-body" class="diagnostics-body" [hidden]="collapsed()">
+          <div class="diagnostics-toolbar">
+            <p role="status">{{ diagnostics.entries().length }} of 25 recent requests</p>
+            <button
+              class="button link"
+              type="button"
+              [disabled]="!diagnostics.entries().length"
+              (click)="diagnostics.clear()"
+            >
+              Clear
+            </button>
+          </div>
+          <p class="diagnostics-note">
+            Cache reflects X-Cache headers, not internal Redis activity. Bodies, credentials and
+            query values are not recorded.
+          </p>
+          <ol class="request-list" aria-label="Recent API requests">
+            @for (entry of diagnostics.entries(); track entry.id) {
+              <li>
+                <div class="request-summary">
+                  <strong>{{ entry.method }}</strong>
+                  <span
+                    class="request-status"
+                    [class.failed]="
+                      entry.state === 'complete' && (entry.status === 0 || entry.status! >= 400)
+                    "
+                  >
+                    @if (entry.state === 'pending') {
+                      Pending
+                    } @else if (entry.state === 'cancelled') {
+                      Cancelled
+                    } @else if (entry.status === 0) {
+                      Network error
+                    } @else {
+                      HTTP {{ entry.status }}
+                    }
+                  </span>
+                  @if (entry.durationMs !== null) {
+                    <span>{{ entry.durationMs }} ms</span>
+                  }
+                </div>
+                <p class="request-path">{{ entry.path }}</p>
+                <p class="request-cache">Cache: {{ entry.cache }}</p>
+                @if (entry.requestId) {
+                  <p class="request-id">Request ID: {{ entry.requestId }}</p>
+                }
+              </li>
+            } @empty {
+              <li class="empty-requests">
+                Navigate or perform an action to see requests. Earlier requests are not recorded.
+              </li>
+            }
+          </ol>
+        </div>
+      </aside>
+    }
+    <label class="diagnostics-toggle">
+      <input
+        type="checkbox"
+        role="switch"
+        [checked]="diagnostics.enabled()"
+        (change)="toggle($event)"
+      />
+      Diagnostics
+    </label>
+  </div>
+}

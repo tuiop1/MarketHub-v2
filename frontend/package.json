@@ -6,8 +6,10 @@
     "start": "ng serve --port 3000 --proxy-config proxy.conf.json",
     "build": "ng build",
     "test": "ng test --watch=false",
-    "format": "prettier --write \"src/**/*.{ts,html,scss,md}\" \"*.{json,md}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,html,scss,md}\" \"*.{json,md}\""
+    "format": "prettier --write \"src/**/*.{ts,html,scss,md}\" \"*.{json,md}\" \"scripts/**/*.mjs\"",
+    "format:check": "prettier --check \"src/**/*.{ts,html,scss,md}\" \"*.{json,md}\" \"scripts/**/*.mjs\"",
+    "build:keycloak-theme": "node scripts/build-keycloak-theme.mjs",
+    "check:keycloak-theme": "node scripts/build-keycloak-theme.mjs --check"
   },
   "dependencies": {
     "@angular/common": "^20.3.35",
@@ -29,6 +31,7 @@
     "@types/node": "^22.20.1",
     "jsdom": "^26.1.0",
     "prettier": "^3.10.0",
+    "sass": "^1.90.0",
     "typescript": "~5.8.0",
     "vitest": "^3.2.7"
   }

@@ -118,3 +118,11 @@ Verification:
 - Backend, infrastructure and pre-existing user documentation were verified unchanged by SHA-256 comparison.
 
 Live backend/OIDC integration remains unverified because the gateway and Keycloak were unavailable. The browser comparisons used read-only local fixtures; they do not establish real login or payment behavior.
+
+## Optional API diagnostics and Keycloak visual consistency — 2026-11-14
+
+Added one bottom-right Diagnostics switch with a collapsible panel in development/local builds. Recording starts off, stays in memory and is bounded to 25 requests. Only same-origin API metadata is recorded; bodies, credentials, query values and Keycloak traffic are excluded. Clear/off cannot resurrect entries when older requests finish. Cache labels require observable `X-Cache` headers (or HTTP 304); internal Redis hits remain unavailable without backend instrumentation. Production omits the switch and interceptor.
+
+Removed the bag symbol beside the MarketHub wordmark and its unused styling. Keycloak now shares the existing plum/stone tokens, font and controls. It inherits native forms/scripts rather than copying authentication templates. A small Sass build/check script generates its CSS and self-hosted font assets into the existing theme directory; Sass is now explicitly declared as a development dependency. Backend code, realm/client configuration and infrastructure were unchanged.
+
+Validation: 93 tests/12 files; production/local builds; no-emit type check; formatting; generated-theme freshness; real disposable Keycloak 26.6.4 HTTP checks for styles/font, invalid credentials, authorization-code/PKCE and recovery. The code review found and resolved an Escape focus issue. See `qa/README.md` for scope. Browser automation was unavailable; rendered desktop/mobile verification remains outstanding and is not claimed.

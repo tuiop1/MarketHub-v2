@@ -1,0 +1,233 @@
+@use '../styles/tokens';
+
+@font-face {
+  font-family: 'Plus Jakarta Sans Variable';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('../fonts/plus-jakarta-sans-latin-wght-normal.woff2') format('woff2');
+}
+
+:root {
+  color-scheme: light;
+  --keycloak-logo-url: none;
+  --keycloak-bg-logo-url: none;
+  --pf-v5-global--FontFamily--text: var(--font-family-body);
+  --pf-v5-global--FontFamily--heading: var(--font-family-body);
+  --pf-v5-global--primary-color--100: var(--color-action);
+  --pf-v5-global--primary-color--200: var(--color-action-hover);
+  --pf-v5-global--link--Color: var(--color-action);
+  --pf-v5-global--link--Color--hover: var(--color-action-hover);
+}
+
+body,
+.login-pf body {
+  margin: 0;
+  background: var(--color-page);
+  color: var(--color-text);
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-14);
+  line-height: var(--line-height-body);
+  accent-color: var(--color-action);
+  caret-color: var(--color-action);
+  scrollbar-color: var(--color-scrollbar) var(--color-page);
+}
+
+::selection {
+  background: var(--color-selection);
+  color: var(--color-selection-text);
+}
+
+.pf-v5-c-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100svh;
+  padding: var(--space-10) var(--space-5);
+  background: none;
+}
+
+.pf-v5-c-login__container {
+  display: grid;
+  width: min(100%, 30rem);
+  max-width: none;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'header' 'main';
+  gap: var(--space-7);
+  margin: 0;
+}
+
+#kc-header {
+  padding: 0;
+  margin: 0;
+}
+
+#kc-header-wrapper {
+  padding: 0;
+  // The inherited Keycloak stylesheet marks this declaration important.
+  color: var(--color-text) !important;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-23);
+  font-weight: var(--font-weight-800);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--line-height-heading);
+  text-align: left;
+  text-transform: none;
+}
+
+.pf-v5-c-login__main {
+  min-width: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-3xl);
+  box-shadow: none;
+}
+
+.pf-v5-c-login__main-header {
+  display: block;
+  padding: var(--space-8) var(--space-8) var(--space-6);
+  border: 0;
+}
+
+#kc-page-title {
+  margin: 0;
+  color: var(--color-text);
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-28);
+  font-weight: var(--font-weight-750);
+  letter-spacing: var(--tracking-heading);
+  line-height: var(--line-height-title);
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.pf-v5-c-login__main-body {
+  padding: 0 var(--space-8) var(--space-8);
+}
+
+.pf-v5-c-form {
+  row-gap: var(--space-5);
+}
+
+.pf-v5-c-form__label {
+  color: var(--color-text);
+  font-size: var(--font-size-13);
+  font-weight: var(--font-weight-600);
+}
+
+.pf-v5-c-form-control {
+  --pf-v5-c-form-control--after--BorderBottomWidth: 0;
+  --pf-v5-c-form-control--after--BorderBottomColor: transparent;
+  --pf-v5-c-form-control--before--BorderWidth: 0;
+  min-height: var(--control-height);
+  background: var(--color-surface);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+
+  > :is(input, select, textarea) {
+    min-height: var(--control-height);
+    font-family: inherit;
+    font-size: var(--font-size-14);
+    color: var(--color-text);
+  }
+
+  &:focus-within {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  &.pf-m-error {
+    border-color: var(--color-danger);
+  }
+}
+
+input::placeholder {
+  color: var(--color-placeholder);
+  opacity: 1;
+}
+
+.pf-v5-c-button {
+  min-height: var(--control-height);
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-650);
+
+  &::after {
+    border-radius: inherit;
+  }
+
+  &.pf-m-primary {
+    background: var(--color-action);
+    color: var(--color-on-action);
+
+    &:hover {
+      background: var(--color-action-hover);
+    }
+  }
+
+  &.pf-m-control {
+    background: var(--color-surface-accent);
+    color: var(--color-action);
+  }
+}
+
+a {
+  color: var(--color-action);
+  text-underline-offset: var(--space-1);
+
+  &:hover {
+    color: var(--color-action-hover);
+  }
+}
+
+:is(a, button, input[type='submit'], input[type='checkbox'], select):focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: var(--space-1);
+}
+
+.pf-v5-c-check__label,
+.pf-v5-c-login__main-footer-band {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-13);
+}
+
+.pf-v5-c-login__main-footer-band {
+  background: var(--color-page);
+}
+
+.pf-v5-c-helper-text__item.pf-m-error,
+.kc-feedback-text.pf-m-error {
+  color: var(--color-danger-text);
+}
+
+.pf-v5-c-alert {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: none;
+
+  &.pf-m-danger {
+    background: var(--color-danger-surface);
+    color: var(--color-danger-text);
+  }
+
+  &.pf-m-success {
+    background: var(--color-success-surface);
+    color: var(--color-success-text);
+  }
+}
+
+@media (max-width: 480px) {
+  .pf-v5-c-login {
+    padding: var(--space-8) var(--space-5);
+  }
+
+  .pf-v5-c-login__main-header {
+    padding: var(--space-6) var(--space-6) var(--space-5);
+  }
+
+  .pf-v5-c-login__main-body {
+    padding: 0 var(--space-6) var(--space-6);
+  }
+}

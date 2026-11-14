@@ -19,3 +19,13 @@ The catalog was compared at widths 390, 800, 1280 and 1440. Product, category an
 A browser check caught a real Sass font-import hoisting issue: establishing the `base` layer ahead of the order declaration gave reset rules higher priority. Loading the font with `meta.load-css` after the explicit layer order fixed it. The final compiled global rule/declaration stream matches the original, with unchanged layer order.
 
 These checks cover presentation and client validation. Gateway and Keycloak were stopped, so live authentication, authorized administration and checkout integration were not exercised.
+
+## Diagnostics and Keycloak theme — 2026-11-14
+
+The automated frontend suite now has 93 passing tests across 12 files. New coverage checks opt-in/production gating, metadata-only recording, observable cache headers, API error normalization, cancellations, clearing in-flight requests, the 25-entry limit and the panel's switch/collapse/clear controls. Escape restores focus to the persistent Expand button when the panel collapses.
+
+An actual isolated Keycloak 26.6.4 instance loaded the theme. HTTP integration checks fetched both parent stylesheets, the parent login stylesheet, MarketHub overrides and the local WOFF2 font. They exercised native invalid-credential feedback, authorization-code/PKCE token exchange and the password-recovery page using a disposable synthetic identity. This did not use or alter real users, realms, client settings or backend services.
+
+Production/local builds, TypeScript, Prettier and generated-theme freshness checks passed. The design detector reported only the established Plus Jakarta Sans font advisory; the typeface was deliberately retained for consistency.
+
+Rendered verification is **not complete**: browser automation exposed no available browser, so desktop/mobile alignment, overlap, contrast and actual browser focus behavior could not be visually checked. No screenshot from an earlier task is evidence for this change. DOM tests and HTTP checks do not replace that inspection. Actual deployment/backend integration remains outside these isolated checks.

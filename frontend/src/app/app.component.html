@@ -2,9 +2,7 @@
 <header class="site-header">
   <div class="header-inner">
     <a class="brand" routerLink="/products" aria-label="MarketHub home" (click)="closeMenu()"
-      ><span class="brand-symbol"><mh-icon name="bag" /></span>MarketHub<span
-        class="brand-dot"
-      ></span
+      >MarketHub<span class="brand-dot"></span
     ></a>
     <button
       class="button subtle menu-toggle"
@@ -105,3 +103,6 @@
   <a routerLink="/register" [queryParams]="{ type: 'merchant' }">Open a shop</a
   ><span class="footer-note">Payments in this project are simulated.</span>
 </footer>
+@if (diagnosticsAvailable) {
+  <mh-diagnostics />
+}
