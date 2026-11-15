@@ -21,7 +21,7 @@
 
 ## Project walkthrough
 
-[![Watch the MarketHub-v2 demo](https://img.youtube.com/vi/Q2l-6236j-8/maxresdefault.jpg)](https://www.youtube.com/watch?v=Q2l-6236j-8)
+[![Watch the MarketHub-v2 demo](https://img.youtube.com/vi/uVznAtdxkjA/maxresdefault.jpg)](https://youtu.be/uVznAtdxkjA)
 
 ---
 
