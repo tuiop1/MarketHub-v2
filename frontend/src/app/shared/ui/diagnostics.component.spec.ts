@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpHeaders } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
-import { authStub } from '../../testing/fixtures';
+import { authStub, product } from '../../testing/fixtures';
 import { AdminNavComponent } from '../../features/administration/admin-nav.component';
 import { DiagnosticsService } from '../../core/diagnostics/diagnostics.service';
 import { DiagnosticsComponent } from './diagnostics.component';
@@ -25,11 +25,14 @@ describe('Diagnostics controls', () => {
     toggle.click();
     navigation.detectChanges();
     const service = TestBed.inject(DiagnosticsService);
-    const id = service.start('GET', '/api/v1/products')!;
-    service.finish(id, 200, 12, new HttpHeaders({ 'X-Cache': 'HIT' }));
+    const id = service.start('GET', `/api/v1/products/${product.id}`)!;
+    service.finish(id, 200, 12, new HttpHeaders());
     fixture.detectChanges();
     expect(element.textContent).toContain('HTTP 200');
-    expect(element.textContent).toContain('Cache: Hit');
+    expect(element.querySelector('.request-cache')?.textContent).toContain(
+      'Caching policy: Eligible (up to 30 min)'
+    );
+    expect(element.textContent).toContain('not whether a response was cached');
     const collapse = element.querySelector<HTMLButtonElement>(
       '[aria-controls="diagnostics-body"]'
     )!;

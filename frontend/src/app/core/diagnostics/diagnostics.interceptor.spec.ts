@@ -56,23 +56,73 @@ describe('Opt-in API diagnostics', () => {
   });
 
   it.each([
-    ['HIT', 'Hit'],
-    ['MISS', 'Miss'],
-    [null, 'Not reported'],
-  ])('reports only cache evidence from X-Cache (%s)', (header, expected) => {
+    {
+      method: 'GET',
+      url: '/api/v1/products/bc7c9dcf-7114-4b70-902c-158ce189e609',
+      expected: 'Eligible (up to 30 min)',
+    },
+    {
+      method: 'GET',
+      url: '/api/v1/categories/bc7c9dcf-7114-4b70-902c-158ce189e609',
+      expected: 'Eligible (up to 30 min)',
+    },
+    {
+      method: 'GET',
+      url: '/api/v1/products/bc7c9dcf-7114-4b70-902c-158ce189e609?view=details',
+      expected: 'Eligible (up to 30 min)',
+    },
+    { method: 'GET', url: '/api/v1/products', expected: 'Not configured' },
+    { method: 'GET', url: '/api/v1/categories?page=0', expected: 'Not configured' },
+    { method: 'GET', url: '/api/v1/admin/categories', expected: 'Not configured' },
+    { method: 'GET', url: '/api/v1/products/not-an-id', expected: 'Not configured' },
+    {
+      method: 'GET',
+      url: '/api/v1/products/bc7c9dcf-7114-4b70-902c-158ce189e609/stock',
+      expected: 'Not configured',
+    },
+    {
+      method: 'PATCH',
+      url: '/api/v1/products/bc7c9dcf-7114-4b70-902c-158ce189e609',
+      expected: 'Not configured',
+    },
+    {
+      method: 'POST',
+      url: '/api/v1/categories/bc7c9dcf-7114-4b70-902c-158ce189e609',
+      expected: 'Not configured',
+    },
+  ])('describes configured caching eligibility for $method $url', ({ method, url, expected }) => {
     diagnostics.setEnabled(true);
-    client.get('/api/v1/products').subscribe();
-    expect(diagnostics.entries()[0].state).toBe('pending');
-    http.expectOne('/api/v1/products').flush([], {
-      headers: { 'X-Request-Id': 'request-123', ...(header ? { 'X-Cache': header } : {}) },
+    client.request(method, url).subscribe();
+    expect(diagnostics.entries()[0]).toMatchObject({ state: 'pending', cachePolicy: expected });
+    http.expectOne(url).flush([], {
+      headers: { 'X-Request-Id': 'request-123', 'X-Cache': 'HIT' },
     });
     expect(diagnostics.entries()[0]).toMatchObject({
       state: 'complete',
       status: 200,
-      cache: expected,
+      cachePolicy: expected,
       requestId: 'request-123',
     });
+    expect(diagnostics.entries()[0]).not.toHaveProperty('cache');
     expect(diagnostics.entries()[0].durationMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it('keeps policy separate from failed responses and ignores reported cache state', () => {
+    diagnostics.setEnabled(true);
+    const url = '/api/v1/products/bc7c9dcf-7114-4b70-902c-158ce189e609';
+    client.get(url).subscribe({ error: () => {} });
+    http.expectOne(url).flush(
+      {},
+      {
+        status: 404,
+        statusText: 'Not found',
+        headers: { 'X-Cache': 'MISS' },
+      }
+    );
+    expect(diagnostics.entries()[0]).toMatchObject({
+      status: 404,
+      cachePolicy: 'Eligible (up to 30 min)',
+    });
   });
 
   it('preserves application error handling and records raw failure headers', () => {

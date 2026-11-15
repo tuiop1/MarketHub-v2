@@ -39,8 +39,9 @@
           </button>
         </div>
         <p class="diagnostics-note">
-          Cache reflects X-Cache headers, not internal Redis activity. Bodies, credentials and query
-          values are not recorded.
+          Only product and category detail GET requests are configured for caching. Labels describe
+          policy, not whether a response was cached. Bodies, credentials and query values are not
+          recorded.
         </p>
         <ol class="request-list" aria-label="Recent API requests">
           @for (entry of diagnostics.entries(); track entry.id) {
@@ -68,7 +69,7 @@
                 }
               </div>
               <p class="request-path">{{ entry.path }}</p>
-              <p class="request-cache">Cache: {{ entry.cache }}</p>
+              <p class="request-cache">Caching policy: {{ entry.cachePolicy }}</p>
               @if (entry.requestId) {
                 <p class="request-id">Request ID: {{ entry.requestId }}</p>
               }

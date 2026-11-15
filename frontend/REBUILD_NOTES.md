@@ -132,3 +132,9 @@ Validation: 93 tests/12 files; production/local builds; no-emit type check; form
 Replaced build-configuration availability with the existing authenticated Admin role. The Diagnostics switch is now beside the Categories/Shops/Customers tabs in Administration, including production. Recording remains off initially and memory-only. The panel stays available across pages while enabled and can be closed directly; sign-out/role loss clears history and disables recording. Request metadata/privacy limits and cache-evidence semantics are retained. Environment flags were removed, and the interceptor is registered in all builds with role/opt-in checks in the store.
 
 The control, panel and state remain separate and use external HTML/SCSS. Validation: 101 tests, production/local builds, no-emit type checking, formatting, and real-browser desktop/mobile checks with isolated Keycloak/API fixtures. See `qa/README.md`. Backend, Keycloak theme/configuration and deployment workflows were unchanged in this follow-up.
+
+## Frontend cache policy reference — 2026-11-15
+
+Replaced response cache-state labels with a small frontend reference to existing backend policy. Product/category detail GETs with UUID IDs are eligible for up to 30 minutes; other requests show `Not configured`. The policy is classified at request start and does not change with response headers/status. The panel explains that eligibility does not confirm caching. Request IDs, status, timing, privacy boundaries, Admin control and external HTML/SCSS ownership are retained. Keep this documented mapping synchronized with future backend cache changes.
+
+No backend, infrastructure or cache implementation was changed. Work was made on `dev`, fast-forwarded to the latest merged `main` first, so the PR contains only this follow-up.
