@@ -13,7 +13,7 @@
 
 **MarketHub v2** is a distributed marketplace platform that supports customer, merchant, and administrative workflows across independently deployable services. It provides secure authentication and role management, product and category management, cart operations, stock reservation, coordinated order and payment processing, failure compensation, asynchronous email notifications, observability, and automated deployment.
 
-[Architecture](#architecture) · [API](#api-endpoints) · [Order Flow](#order-and-payment-flow) · [Run Locally](#running-locally) · [Deployment](#production-deployment)
+[Live application](https://markethub-prod.xyz) · [Architecture](#architecture) · [API](#api-endpoints) · [Order Flow](#order-and-payment-flow) · [Run Locally](#running-locally) · [Deployment](#production-deployment)
 
 </div>
 
@@ -48,17 +48,19 @@ MarketHub supports the principal marketplace flows end to end:
 - Eureka-based service discovery.
 - Prometheus, Grafana, Loki, Tempo, Alloy, Micrometer, and OpenTelemetry integration.
 - Docker Compose environments for local development and production deployment.
-- GitHub Actions for testing, Compose validation, image builds, and VPS deployment.
+- GitHub Actions for testing, immutable ECR image builds, and AWS releases through OIDC and Systems Manager.
 
 ---
 
 ## Architecture
 
-MarketHub is divided into an edge layer, domain services, platform services, and supporting infrastructure. External requests enter through the reverse proxy and API Gateway. The gateway validates JWTs, applies Redis-backed rate limits, and forwards only public API routes. Keycloak owns identities and realm roles, while Eureka allows services to resolve each other without hard-coded addresses.
+MarketHub is divided into an edge layer, domain services, platform services, and supporting infrastructure. In AWS, CloudFront serves the Angular application from private S3 and routes API requests through Caddy on EC2 to the API Gateway. The gateway validates JWTs, applies Redis-backed rate limits, and forwards only public API routes. Keycloak owns identities and realm roles, while Eureka allows services to resolve each other without hard-coded addresses.
 
-The business logic is split by capability rather than by technical layer. Account, catalog, cart, order, and payment data remain under the ownership of their respective services. They use separate logical PostgreSQL databases, although a single PostgreSQL container is used in the current Docker deployment to keep the infrastructure resource-efficient and operationally manageable.
+The business logic is split by capability rather than by technical layer. Account, catalog, cart, order, and payment data remain under the ownership of their respective services. In AWS, five domain databases and the Keycloak database share one private RDS PostgreSQL instance, with separate database roles. Local development uses a PostgreSQL container.
 
 Immediate operations use synchronous REST calls because the caller needs a result before continuing. Kafka is used for customer registration, merchant registration, and order-confirmation events because notification delivery should not extend or block the main transaction.
+
+![MarketHub system architecture: Angular, gateway, business services, identity, databases, cache and events](docs/architecture/system-architecture.png)
 
 ### Service boundaries
 
@@ -120,7 +122,9 @@ The table presents the main public contract rather than every controller method.
 4. The order is persisted with immutable product-name and price snapshots in `PENDING_PAYMENT` state.
 5. `payment-service` creates and processes the payment.
 6. When payment succeeds, the stock reservation is committed and the order becomes paid.
-7. `OrderConfirmedEvent` is published to Kafka and consumed by `notification-service`, which sends the confirmation email independently of the HTTP request.
+7. An order-confirmation record is saved through a transactional outbox; its publisher delivers `OrderConfirmedEvent` to Kafka, where it is consumed by `notification-service`, which sends the confirmation email independently of the HTTP request.
+
+Payment processing is simulated: card and Google Pay succeed, while QR payment fails to demonstrate compensation. No real payment provider is connected.
 
 ### Failure and compensation
 
@@ -140,7 +144,7 @@ This design keeps each service responsible for its own state while giving the pu
 
 **Security at more than one layer.** The gateway validates incoming tokens and downstream protected services also operate as OAuth 2.0 resource servers. Administrative identity operations are isolated in `account-service` through a confidential Keycloak service account.
 
-**Production-oriented deployment with controlled infrastructure costs.** The deployment uses one VPS, one Kafka broker, and one PostgreSQL server to control cost and resource usage. Logical service separation, health checks, persistent volumes, observability, and automated deployment are retained while keeping the operational footprint manageable.
+**Production-oriented deployment with controlled infrastructure costs.** The AWS deployment uses one EC2 Docker Compose host, one Kafka broker, and one private RDS PostgreSQL instance to control cost and resource usage. CloudFront and S3 serve the frontend independently of the backend host. Logical service separation, health checks, persistent volumes, observability, and automated deployment are retained while keeping the operational footprint manageable.
 
 ---
 
@@ -148,7 +152,7 @@ This design keeps each service responsible for its own state while giving the pu
 
 - Keycloak provides OpenID Connect authentication and issues JWT access tokens.
 - The gateway and protected services validate signed tokens as OAuth 2.0 resource servers.
-- The frontend uses a public Keycloak client for interactive login.
+- The frontend uses a public Keycloak client with Authorization Code flow and PKCE for interactive login.
 - `account-service` uses a confidential service account to create users, assign roles, and manage account state.
 - Merchant privileges are granted only after administrative approval.
 - Platform roles include `ADMIN`, `CUSTOMER`, `MERCHANT_PENDING`, `MERCHANT`, and `MERCHANT_REJECTED`.
@@ -171,7 +175,7 @@ Account and order services publish these events. `notification-service` consumes
 
 ## Observability
 
-The optional `observability` Compose profile provides metrics, centralized logs, and distributed traces.
+The `observability` Compose profile provides metrics, centralized logs, and distributed traces. It is optional locally and enabled by the AWS release script.
 
 ```mermaid
 flowchart LR
@@ -190,7 +194,7 @@ flowchart LR
 | Logs | Structured container logs → Alloy → Loki → Grafana |
 | Traces | OpenTelemetry OTLP export → Tempo → Grafana |
 
-Tracing is controlled through `OTLP_TRACING_ENABLED` and is disabled by default for the lighter local stack.
+Tracing is controlled through `OTLP_TRACING_ENABLED`: disabled by default locally and enabled by default in AWS with a 0.1 sampling probability. Alloy collects Docker logs; Spring services export traces directly to Tempo. Grafana sends alert notifications to Discord through a webhook. In AWS, Grafana binds only to host loopback (`127.0.0.1:3001`) for administrative tunnel access. Prometheus, Loki and Tempo use short retention windows for this demo deployment.
 
 ---
 
@@ -200,7 +204,7 @@ Tracing is controlled through `OTLP_TRACING_ENABLED` and is disabled by default 
 
 **Data and infrastructure:** PostgreSQL 16, Liquibase, Redis, Apache Kafka in KRaft mode, Keycloak, Eureka, SendGrid, Docker Compose, Nginx, and Caddy.
 
-**Observability and delivery:** Prometheus, Grafana, Loki, Tempo, Grafana Alloy, GitHub Actions, and SSH-based VPS deployment.
+**Observability and delivery:** Prometheus, Grafana, Loki, Tempo, Grafana Alloy, GitHub Actions, Amazon ECR, S3, CloudFront, ACM, EC2, RDS, IAM OIDC, and Systems Manager Run Command.
 
 **Testing:** JUnit 5, Mockito, Spring Boot test support, Testcontainers, repository tests, and integration tests for stateful workflows.
 
@@ -212,7 +216,8 @@ Tracing is controlled through `OTLP_TRACING_ENABLED` and is disabled by default 
 MarketHub-v2/
 ├── .github/workflows/
 │   ├── testandbuild.yml
-│   └── deployproduction.yml
+│   ├── deployaws.yml          # current AWS release
+│   └── deployproduction.yml   # original VPS release
 ├── backend/
 │   ├── libs/
 │   │   ├── common-api/
@@ -230,6 +235,7 @@ MarketHub-v2/
 │   ├── keycloak/
 │   └── postgres/
 ├── frontend/
+├── docs/architecture/        # system and AWS deployment diagrams
 ├── observability/
 ├── .env.prod.example
 ├── docker-compose.yml
@@ -308,75 +314,73 @@ Use `docker compose down -v` only when the persistent local data should also be 
 
 ## CI/CD
 
-The reusable `Test and build` workflow runs backend tests, validates the Compose configuration, and builds the production images. The production workflow is triggered manually from `main`, reuses CI as a validation gate, connects to the VPS through SSH, updates `/opt/MarketHub-v2` to `origin/main`, and recreates the Compose stack. It also preserves whether the observability profile was enabled before deployment.
+[Deploy to AWS](.github/workflows/deployaws.yml) runs on pushes to `main` and can also be dispatched manually from `main`.
 
-See the [single-EC2 deployment guide](production/ec2/DEPLOYMENT.md) for server setup and deployment commands.
+1. **Verify:** reuse [Test and build](.github/workflows/testandbuild.yml) for Maven verification, Angular tests and a production build, Compose validation, and deployment-script checks.
+2. **Publish images:** obtain temporary AWS credentials through GitHub OIDC and an IAM release role. Build eight Spring service images for `linux/amd64` and push them to ECR, tagged with the full commit SHA. Existing SHA images are reused.
+3. **Release backend:** upload an allowlisted runtime archive to private S3, then invoke EC2 through SSM Run Command. The instance role downloads the archive and pulls ECR images; no inbound SSH connection from GitHub is required.
+4. **Check and promote:** start Compose with observability, check health, restart stability, Tempo readiness, and public API/auth responses, then update the current/previous release pointers.
+5. **Publish frontend:** after backend success, upload the tested Angular assets to S3, write `index.html` last, invalidate CloudFront, and probe the application, SPA routing, API, and identity endpoints.
 
-Required GitHub Actions secrets for the original single-server workflow:
+Backend rollout failures restore the previous containers and configuration. Database migrations are not reversed, and frontend publication failures do not automatically roll back the backend. This single-host rollout does not guarantee zero downtime.
 
-- `VPS_HOST`
-- `VPS_USER`
-- `VPS_SSH_PRIVATE_KEY`
+The workflow uses repository variables `AWS_REGION`, `AWS_ACCOUNT_ID`, `AWS_DEPLOY_ROLE_ARN`, `EC2_INSTANCE_ID`, `FRONTEND_BUCKET`, `CLOUDFRONT_DISTRIBUTION_ID`, and `PUBLIC_APP_URL`. Runtime secrets remain in the protected environment file on EC2; GitHub uses temporary AWS credentials rather than stored AWS access keys.
 
 ---
 
 ## Production deployment
 
-The single-server deployment uses `production/ec2/docker-compose.prod.yml` through `bash production/ec2/compose.sh`. The VPS needs Docker, Docker Compose, Git, and publicly reachable ports `22`, `80`, and `443`. Caddy is the public entry point: it serves the frontend and reverse-proxies `/api/` to the gateway and `/auth/` to Keycloak. PostgreSQL, Kafka, Redis, Eureka, and the application services remain inside the Docker network.
+The current application is deployed at **[markethub-prod.xyz](https://markethub-prod.xyz)**. AWS runtime configuration lives in [`production/aws`](production/aws/). The original single-server deployment remains under [`production/ec2`](production/ec2/README.md).
 
-### First deployment
+![MarketHub AWS deployment: CloudFront, S3, ECR, SSM, EC2 Docker Compose and private RDS](docs/architecture/deployment-architecture.png)
 
-```bash
-sudo mkdir -p /opt
-sudo git clone https://github.com/tuiop1/MarketHub-v2.git /opt/MarketHub-v2
-cd /opt/MarketHub-v2
+### AWS resources and responsibilities
 
-cp .env.prod.example .env.prod
-nano .env.prod
-```
+| Resource | Role |
+|---|---|
+| **CloudFront** | Public HTTPS entry point; serves Angular from S3 and forwards uncached `/api` and `/auth` requests to the EC2 origin |
+| **S3** | Private Angular static files via Origin Access Control; a separate `releases/<SHA>/` prefix holds runtime archives and is blocked from public CDN requests |
+| **ACM** | CloudFront viewer TLS certificate in `us-east-1`; application resources are in Frankfurt (`eu-central-1`) |
+| **EC2** | One Ubuntu host running Docker Compose: eight Spring services, Caddy, Keycloak, Kafka, Redis, and five observability containers |
+| **ECR** | Eight service image repositories with full commit-SHA release tags; images are built in CI rather than on EC2 |
+| **RDS PostgreSQL** | One private database instance containing `account`, `catalog`, `cart`, `orders`, `payment`, and `keycloak`, each with its own role |
+| **VPC and security groups** | EC2 in a public subnet; RDS in private subnets, with database access restricted to the EC2 security group |
+| **IAM and Systems Manager** | GitHub OIDC release role, EC2 runtime role, and SSM Run Command for deployment |
+| **EBS / Docker volumes** | Persistent broker, cache, Caddy, and telemetry data across container recreation |
 
-At minimum, replace the example values for:
+The AWS stack runs 17 long-lived containers with observability enabled. Angular runs in the browser; neither a frontend server nor PostgreSQL runs as a production EC2 container. Kafka, Redis, Eureka, and business services communicate over the private Docker network.
 
-- `SERVER_IP`
-- `ACME_EMAIL`
-- `POSTGRES_PASSWORD`
-- `KEYCLOAK_DB_PASSWORD`
-- `KEYCLOAK_ADMIN_PASSWORD`
-- `KEYCLOAK_ADMIN_CLIENT_SECRET`
+### Request routing and TLS
 
-Then start the platform:
+- Browser → **CloudFront** over HTTPS.
+- Static files → **private S3**; a CloudFront Function rewrites frontend navigation routes to `index.html`.
+- `/api/*` → **HTTPS Caddy origin** → **Gateway** → business services.
+- `/auth/*` → **HTTPS Caddy origin** → **Keycloak**, preserving the public OIDC issuer.
+- Services and Keycloak → **private RDS** using TLS with certificate verification.
 
-```bash
-bash production/ec2/compose.sh \
-  up -d --build
-```
+CloudFront uses an ACM viewer certificate; Caddy manages the origin certificate. Caddy checks a shared origin header before proxying and supplies the public forwarded host. API and authentication responses are not cached. Container ports remain internal, apart from Caddy's public entry points and Grafana's loopback binding.
 
-To include the observability stack:
+### Setup and operations
 
-```bash
-bash production/ec2/compose.sh \
-  --profile observability \
-  up -d --build
-```
+AWS resources must exist before releasing; the workflow deploys the application into existing infrastructure. Use the [runtime configuration example](production/aws/.env.example), [IAM policies](production/aws/iam/), and [database bootstrap](production/aws/rds/) when configuring the environment. The executable [release workflow](.github/workflows/deployaws.yml) and [deployment script](production/aws/deploy.sh) define the current automated release behavior.
 
-### Verify the deployment
+Validate the runtime configuration using example values without contacting AWS:
 
 ```bash
-bash production/ec2/compose.sh ps
-bash production/ec2/compose.sh logs -f gateway-service frontend
+AWS_ENV_FILE="$PWD/production/aws/.env.example" \
+  bash production/aws/compose.sh --profile observability config --quiet
 ```
 
-### Manual update
+On EC2, inspect the active release with its shared environment file and release tag:
 
 ```bash
-git fetch origin main
-git reset --hard origin/main
-
-bash production/ec2/compose.sh \
-  up -d --build
+cd /opt/markethub/current
+export AWS_ENV_FILE=/opt/MarketHub-v2/production/aws/.env
+bash production/aws/compose.sh --profile observability ps
+bash production/aws/compose.sh --profile observability logs -f gateway-service order-service
 ```
 
-The same update is automated by `.github/workflows/deployproduction.yml` after the initial VPS checkout, `.env.prod`, and SSH secrets have been configured.
+This is a compact demo deployment with a single backend host and broker. It demonstrates service isolation and managed database/static delivery, while retaining a small operational footprint.
 
 ---
 
