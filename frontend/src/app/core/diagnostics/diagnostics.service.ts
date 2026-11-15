@@ -9,16 +9,16 @@ export interface DiagnosticEntry {
   readonly state: 'pending' | 'complete' | 'cancelled';
   readonly status: number | null;
   readonly durationMs: number | null;
-  readonly cache: 'Hit' | 'Miss' | 'Revalidated' | 'Not reported';
+  readonly cachePolicy: 'Eligible (up to 30 min)' | 'Not configured';
   readonly requestId: string | null;
 }
 
-function cacheResult(status: number, headers: HttpHeaders): DiagnosticEntry['cache'] {
-  if (status === 304) return 'Revalidated';
-  const cache = headers.get('X-Cache') ?? '';
-  if (/\bhit\b/i.test(cache)) return 'Hit';
-  if (/\bmiss\b/i.test(cache)) return 'Miss';
-  return 'Not reported';
+function cachePolicyFor(method: string, path: string): DiagnosticEntry['cachePolicy'] {
+  // Mirrors catalog-service @Cacheable detail lookups and RedisConfig's 30-minute TTL.
+  // This describes eligibility only; it does not inspect a response or Redis.
+  const detailPath =
+    /^\/api\/v1\/(products|categories)\/[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$/;
+  return method === 'GET' && detailPath.test(path) ? 'Eligible (up to 30 min)' : 'Not configured';
 }
 
 @Injectable({ providedIn: 'root' })
@@ -49,16 +49,17 @@ export class DiagnosticsService {
   start(method: string, url: string): number | null {
     if (!this.enabled()) return null;
     const id = ++this.nextId;
+    const path = url.split(/[?#]/)[0];
     this.entryState.update((entries) =>
       [
         {
           id,
           method,
-          path: url.split(/[?#]/)[0],
+          path,
           state: 'pending' as const,
           status: null,
           durationMs: null,
-          cache: 'Not reported' as const,
+          cachePolicy: cachePolicyFor(method, path),
           requestId: null,
         },
         ...entries,
@@ -77,7 +78,6 @@ export class DiagnosticsService {
               state: 'complete',
               status,
               durationMs: Math.round(durationMs),
-              cache: cacheResult(status, headers),
               requestId:
                 (headers.get('X-Request-Id') ?? headers.get('X-Correlation-Id'))?.slice(0, 128) ??
                 null,
